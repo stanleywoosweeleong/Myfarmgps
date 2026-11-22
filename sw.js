@@ -1,7 +1,7 @@
 // Offline support for the app shell.
 // Network first so updates arrive, but never wait more than NET_TIMEOUT_MS on a weak orchard
 // connection: after that the cached copy is used and the network answer only refreshes the cache.
-const CACHE = 'orchard-gps-v4';
+const CACHE = 'orchard-gps-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './qr.svg', './qr.png'];
 const NET_TIMEOUT_MS = 3000;
 

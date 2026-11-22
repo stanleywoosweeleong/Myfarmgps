@@ -1,4 +1,4 @@
-# Orchard Locator 果园定位 · Lokasi Dusun
+# Orchard GPS · 果园坐标 · Dusun GPS
 
 A phone web app that records an orchard's GPS position and sends it by WhatsApp.
 

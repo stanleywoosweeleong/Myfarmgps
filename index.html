@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Orchard Locator</title>
+<title>Orchard GPS</title>
 <meta name="theme-color" content="#2f5d3a">
 <script>
   // Apply the saved light/dark choice before the page paints, so it never flashes the wrong theme.
@@ -124,7 +124,7 @@ button { font: inherit; }
 <main>
   <header>
     <img src="icon.svg" alt="">
-    <h1 data-t="appName">Orchard Locator</h1>
+    <h1 data-t="appName">Orchard GPS</h1>
     <button type="button" class="theme" id="themeBtn">
       <svg id="icoMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       <svg id="icoSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -195,7 +195,7 @@ const GPS_ALT_OK = 15;                     // trust the phone's GPS altitude onl
 
 const T = {
   en: {
-    appName: 'Orchard Locator', gpsTitle: 'Location',
+    appName: 'Orchard GPS', gpsTitle: 'Location',
     lat: 'Latitude', lng: 'Longitude', elev: 'Elevation', acc: 'Position accuracy', m: 'm', na: 'n/a', srcMap: 'map', srcGps: 'GPS',
     idle: 'Stand in the orchard and tap the button.',
     get: 'Get location', again: 'Read again', reading: 'Reading…',
@@ -216,10 +216,10 @@ const T = {
     langLabel: 'Language', linkLabel: 'App link', qrAlt: 'QR code to open this app',
     copyFail: 'Copy failed. The link is selected; copy it from your keyboard menu.', copyFailBtn: 'Could not copy',
     shareTitle: 'Share this app', shareWa: 'Share on WhatsApp', copyLink: 'Copy link', copied: 'Link copied',
-    shareMsg: 'Orchard Locator: record your orchard\'s GPS location and send it to Stanley Woo.'
+    shareMsg: 'Orchard GPS: record your orchard\'s GPS location and send it to Stanley Woo.'
   },
   zh: {
-    appName: '果园定位', gpsTitle: '位置',
+    appName: '果园坐标', gpsTitle: '位置',
     lat: '纬度', lng: '经度', elev: '海拔', acc: '位置精度', m: '米', na: '无', srcMap: '地图', srcGps: 'GPS',
     idle: '请站在果园内，然后按下按钮。',
     get: '获取位置', again: '重新定位', reading: '定位中…',
@@ -240,10 +240,10 @@ const T = {
     langLabel: '语言', linkLabel: '应用链接', qrAlt: '打开此应用的二维码',
     copyFail: '复制失败。链接已选中，请手动复制。', copyFailBtn: '无法复制',
     shareTitle: '分享此应用', shareWa: '通过 WhatsApp 分享', copyLink: '复制链接', copied: '链接已复制',
-    shareMsg: '果园定位：记录果园的 GPS 位置并发送给 Stanley Woo。'
+    shareMsg: '果园坐标：记录果园的 GPS 位置并发送给 Stanley Woo。'
   },
   ms: {
-    appName: 'Lokasi Dusun', gpsTitle: 'Lokasi',
+    appName: 'Dusun GPS', gpsTitle: 'Lokasi',
     lat: 'Latitud', lng: 'Longitud', elev: 'Ketinggian', acc: 'Ketepatan kedudukan', m: 'm', na: 't/a', srcMap: 'peta', srcGps: 'GPS',
     idle: 'Berdiri di dalam dusun, kemudian tekan butang.',
     get: 'Dapatkan lokasi', again: 'Baca semula', reading: 'Sedang membaca…',
@@ -264,7 +264,7 @@ const T = {
     langLabel: 'Bahasa', linkLabel: 'Pautan aplikasi', qrAlt: 'Kod QR untuk membuka aplikasi ini',
     copyFail: 'Gagal menyalin. Pautan telah dipilih; salin secara manual.', copyFailBtn: 'Gagal menyalin',
     shareTitle: 'Kongsi aplikasi ini', shareWa: 'Kongsi di WhatsApp', copyLink: 'Salin pautan', copied: 'Pautan disalin',
-    shareMsg: 'Lokasi Dusun: rekod lokasi GPS dusun anda dan hantar kepada Stanley Woo.'
+    shareMsg: 'Dusun GPS: rekod lokasi GPS dusun anda dan hantar kepada Stanley Woo.'
   }
 };
 const HTML_LANG = { en: 'en', zh: 'zh-Hans', ms: 'ms' };
