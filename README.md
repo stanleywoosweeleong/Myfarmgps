@@ -11,4 +11,6 @@ A phone web app that records an orchard's GPS position and sends it by WhatsApp.
 
 Live app: https://stanleywoosweeleong.github.io/Myfarmgps/
 
+QR code: `qr.png` (print size) and `qr.svg` (used in the app).
+
 The WhatsApp number is `WA_NUMBER` near the top of the script in `index.html`.

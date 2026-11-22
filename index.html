@@ -89,6 +89,15 @@ button { font: inherit; }
 .btn-wa { background: var(--wa); color: #fff; font-size: 1.05rem; margin-top: 4px; }
 .btn:disabled { opacity: .55; cursor: default; }
 
+.share { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+.share .qr { width: 132px; height: 132px; padding: 6px; background: #fff; border-radius: 10px; border: 1px solid var(--line); }
+.share .qr img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.share .acts { display: grid; gap: 10px; min-width: 0; }
+.share input { font: .82rem var(--font-num); padding: 10px; color: var(--muted); text-overflow: ellipsis; }
+.btn-line { background: transparent; color: var(--ink); border: 1px solid var(--line); min-height: 44px; padding: 10px 12px; }
+.btn-line.ok { color: var(--good); border-color: var(--good); }
+@media (max-width: 360px) { .share { grid-template-columns: 1fr; justify-items: center; } .share .acts { width: 100%; } }
+
 </style>
 </head>
 <body>
@@ -136,9 +145,22 @@ button { font: inherit; }
     </form>
   </section>
 
+  <section aria-labelledby="share-h">
+    <h2 id="share-h" data-t="shareTitle">Share this app</h2>
+    <div class="share">
+      <div class="qr"><img src="qr.svg" alt="QR code for https://stanleywoosweeleong.github.io/Myfarmgps/"></div>
+      <div class="acts">
+        <input type="text" id="appLink" readonly aria-label="App link" value="https://stanleywoosweeleong.github.io/Myfarmgps/">
+        <a class="btn btn-wa" id="shareWa" href="#" target="_blank" rel="noopener" data-t="shareWa" style="text-align:center;text-decoration:none;font-size:.95rem">Share on WhatsApp</a>
+        <button class="btn btn-line" type="button" id="copyLink" data-t="copyLink">Copy link</button>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <script>
+const APP_URL = 'https://stanleywoosweeleong.github.io/Myfarmgps/';
 const WA_NUMBER = '60193824740';           // 019-382 4740, Malaysia (+60)
 const LANG_KEY = 'orchard-gps-lang';
 const GOOD_ACC = 15;                       // metres; stop as soon as the position is this accurate
@@ -163,7 +185,9 @@ const T = {
     zhName: 'Location name (中文)', enName: 'Location name (English / Malay)',
     send: 'WhatsApp to Stanley Woo',
     errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
-    errOffline: 'No internet. Connect and tap the button again.'
+    errOffline: 'No internet. Connect and tap the button again.',
+    shareTitle: 'Share this app', shareWa: 'Share on WhatsApp', copyLink: 'Copy link', copied: 'Link copied',
+    shareMsg: 'Orchard Locator: record your orchard\'s GPS location and send it to Stanley Woo.'
   },
   zh: {
     appName: '果园定位', gpsTitle: '位置',
@@ -181,7 +205,9 @@ const T = {
     zhName: '地名（中文）', enName: '地名（英文／马来文）',
     send: 'WhatsApp 给 Stanley Woo',
     errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
-    errOffline: '没有网络。请连接网络后再按一次。'
+    errOffline: '没有网络。请连接网络后再按一次。',
+    shareTitle: '分享此应用', shareWa: '通过 WhatsApp 分享', copyLink: '复制链接', copied: '链接已复制',
+    shareMsg: '果园定位：记录果园的 GPS 位置并发送给 Stanley Woo。'
   },
   ms: {
     appName: 'Lokasi Dusun', gpsTitle: 'Lokasi',
@@ -199,7 +225,9 @@ const T = {
     zhName: 'Nama tempat (中文)', enName: 'Nama tempat (Inggeris / Melayu)',
     send: 'WhatsApp kepada Stanley Woo',
     errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
-    errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.'
+    errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.',
+    shareTitle: 'Kongsi aplikasi ini', shareWa: 'Kongsi di WhatsApp', copyLink: 'Salin pautan', copied: 'Pautan disalin',
+    shareMsg: 'Lokasi Dusun: rekod lokasi GPS dusun anda dan hantar kepada Stanley Woo.'
   }
 };
 const HTML_LANG = { en: 'en', zh: 'zh-Hans', ms: 'ms' };
@@ -232,6 +260,7 @@ function setLang(l) {
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
   const err = $('formErr'); if (!err.hidden && err.dataset.key) err.textContent = t(err.dataset.key);
   renderGps(); renderStatus();
+  $('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(t('shareMsg') + '\n' + APP_URL);
 }
 document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
 
@@ -429,6 +458,18 @@ $('form').addEventListener('submit', e => {
 });
 ['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => { if ($('formErr').dataset.key === 'errNoField') showError(null); }));
 window.addEventListener('online', () => { if ($('formErr').dataset.key === 'errOffline') showError(null); });
+
+/* ---------- share this app ---------- */
+let copyTimer = null;
+$('copyLink').addEventListener('click', async () => {
+  const b = $('copyLink');
+  try { await navigator.clipboard.writeText(APP_URL); }
+  catch { const i = $('appLink'); i.focus(); i.select(); try { document.execCommand('copy'); } catch {} }
+  b.textContent = t('copied'); b.classList.add('ok');
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => { b.textContent = t('copyLink'); b.classList.remove('ok'); }, 2000);
+});
+$('appLink').addEventListener('focus', e => e.target.select());
 
 setLang(pickInitialLang());
 

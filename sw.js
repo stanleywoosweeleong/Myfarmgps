@@ -1,6 +1,6 @@
 // Network-first for the app shell, so updates arrive when online and the app still opens offline.
-const CACHE = 'orchard-gps-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'orchard-gps-v2';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './qr.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
