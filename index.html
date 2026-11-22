@@ -25,7 +25,7 @@
   --good: #2e7d4a;
   --warn: #b26a00;
   --bad: #b3362b;
-  --wa: #1f9d55;
+  --wa: #177a42;
   --wa-ink: #ffffff;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --font-num: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
@@ -46,6 +46,8 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.map .leaflet-control-attribution { font-size: 9px; line-height: 1.3; max-width: 100%; white-space: normal; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font-body);
@@ -126,7 +128,7 @@ button { font: inherit; }
       <svg id="icoMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       <svg id="icoSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
     </button>
-    <div class="lang" role="group" aria-label="Language">
+    <div class="lang" role="group" aria-label="Language" data-t-label="langLabel">
       <button type="button" data-lang="en" lang="en">EN</button>
       <button type="button" data-lang="zh" lang="zh">中文</button>
       <button type="button" data-lang="ms" lang="ms">BM</button>
@@ -169,11 +171,12 @@ button { font: inherit; }
   <section aria-labelledby="share-h">
     <h2 id="share-h" data-t="shareTitle">Share this app</h2>
     <div class="share">
-      <div class="qr"><img src="qr.svg" alt="QR code for https://stanleywoosweeleong.github.io/Myfarmgps/"></div>
+      <div class="qr"><img src="qr.svg" alt="QR code to open this app" data-t-alt="qrAlt"></div>
       <div class="acts">
-        <input type="text" id="appLink" readonly aria-label="App link" value="https://stanleywoosweeleong.github.io/Myfarmgps/">
+        <input type="text" id="appLink" readonly aria-label="App link" data-t-label="linkLabel" value="https://stanleywoosweeleong.github.io/Myfarmgps/">
         <a class="btn btn-wa" id="shareWa" href="#" target="_blank" rel="noopener" data-t="shareWa" style="display:grid;place-items:center;text-decoration:none;font-size:.95rem">Share on WhatsApp</a>
         <button class="btn btn-line" type="button" id="copyLink" data-t="copyLink">Copy link</button>
+        <span class="sr" id="copyStatus" role="status" aria-live="polite"></span>
       </div>
     </div>
   </section>
@@ -208,6 +211,9 @@ const T = {
     errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
     errOffline: 'No internet. Connect and tap the button again.',
     toDark: 'Switch to dark mode', toLight: 'Switch to light mode',
+    errElevWait: 'Still getting the elevation. Tap again in a few seconds.',
+    langLabel: 'Language', linkLabel: 'App link', qrAlt: 'QR code to open this app',
+    copyFail: 'Copy failed. The link is selected; copy it from your keyboard menu.', copyFailBtn: 'Could not copy',
     shareTitle: 'Share this app', shareWa: 'Share on WhatsApp', copyLink: 'Copy link', copied: 'Link copied',
     shareMsg: 'Orchard Locator: record your orchard\'s GPS location and send it to Stanley Woo.'
   },
@@ -229,6 +235,9 @@ const T = {
     errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
     errOffline: '没有网络。请连接网络后再按一次。',
     toDark: '切换到深色模式', toLight: '切换到浅色模式',
+    errElevWait: '正在获取海拔，请几秒后再按一次。',
+    langLabel: '语言', linkLabel: '应用链接', qrAlt: '打开此应用的二维码',
+    copyFail: '复制失败。链接已选中，请手动复制。', copyFailBtn: '无法复制',
     shareTitle: '分享此应用', shareWa: '通过 WhatsApp 分享', copyLink: '复制链接', copied: '链接已复制',
     shareMsg: '果园定位：记录果园的 GPS 位置并发送给 Stanley Woo。'
   },
@@ -250,6 +259,9 @@ const T = {
     errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
     errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.',
     toDark: 'Tukar ke mod gelap', toLight: 'Tukar ke mod cerah',
+    errElevWait: 'Masih mendapatkan ketinggian. Tekan sekali lagi dalam beberapa saat.',
+    langLabel: 'Bahasa', linkLabel: 'Pautan aplikasi', qrAlt: 'Kod QR untuk membuka aplikasi ini',
+    copyFail: 'Gagal menyalin. Pautan telah dipilih; salin secara manual.', copyFailBtn: 'Gagal menyalin',
     shareTitle: 'Kongsi aplikasi ini', shareWa: 'Kongsi di WhatsApp', copyLink: 'Salin pautan', copied: 'Pautan disalin',
     shareMsg: 'Lokasi Dusun: rekod lokasi GPS dusun anda dan hantar kepada Stanley Woo.'
   }
@@ -281,6 +293,9 @@ function setLang(l) {
   document.documentElement.lang = HTML_LANG[l];
   document.title = t('appName');
   document.querySelectorAll('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
+  document.querySelectorAll('[data-t-label]').forEach(n => n.setAttribute('aria-label', t(n.dataset.tLabel)));
+  document.querySelectorAll('[data-t-alt]').forEach(n => { n.alt = t(n.dataset.tAlt); });
+  const cb = $('copyLink'); if (cb.dataset.state) cb.textContent = t(cb.dataset.state);
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
   const err = $('formErr'); if (!err.hidden && err.dataset.key) err.textContent = t(err.dataset.key);
   renderGps(); renderStatus(); renderTheme();
@@ -312,56 +327,96 @@ function renderGps() {
       ? t('srcGps') + (elevation.acc != null ? ' ±' + Math.round(elevation.acc) + ' ' + t('m') : '')
       : t('srcMap');
     $('elev').append(tag);
-  } else $('elev').textContent = (gpsState === 'reading' || elevBusy) ? '…' : t('na');
+  } else $('elev').textContent = (gpsState === 'reading' || elevBusy()) ? '…' : t('na');
 }
 function stopWatch() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   watchId = null; clearTimeout(watchTimer); clearTimeout(stallTimer);
 }
+
+/* ---------- elevation ----------
+   Use the phone's GPS altitude only when the phone reports it as accurate (altitudeAccuracy ≤ 15 m).
+   Otherwise use the terrain height for the point from Open-Meteo (~90 m grid), which is steadier than
+   a weak GPS altitude. If that lookup fails (offline, timeout), fall back to the GPS altitude.
+   Lookups never block the screen: the position shows at once and elevation fills in when it arrives. */
+const ELEV_TIMEOUT_MS = 6000;
+let gpsElevBusy = false, pinElevBusy = false;
+let runSeq = 0, pinSeq = 0;                // bump to ignore slow answers for an older reading / pin position
+const elevBusy = () => pin ? pinElevBusy : gpsElevBusy;
 async function lookupElevation(lat, lng) {
-  // Used when the phone gives no GPS altitude. Free, no key; needs internet.
+  if (!navigator.onLine) return null;
+  const ctl = 'AbortController' in window ? new AbortController() : null;
+  const timer = ctl && setTimeout(() => ctl.abort(), ELEV_TIMEOUT_MS);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
+    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`, ctl ? { signal: ctl.signal } : {});
     const j = await r.json();
     if (Array.isArray(j.elevation) && j.elevation[0] != null) return { m: j.elevation[0], src: 'map' };
-  } catch {}
+  } catch {} finally { clearTimeout(timer); }
   return null;
 }
-// Elevation: use the phone's GPS altitude only when the phone reports it as accurate.
-// Otherwise use the terrain height for this point from a map (Open-Meteo, ~90 m grid),
-// which is steadier than a weak GPS altitude. Offline with no good GPS altitude: use GPS anyway.
-async function chooseElevation(fix) {
-  const gps = fix.alt != null ? { m: fix.alt, src: 'GPS', acc: fix.altAcc } : null;
-  if (gps && gps.acc != null && gps.acc <= GPS_ALT_OK) return gps;
-  return (await lookupElevation(fix.lat, fix.lng)) || gps;
+const gpsAltitude = fix => fix.alt != null ? { m: fix.alt, src: 'GPS', acc: fix.altAcc } : null;
+async function loadGpsElevation() {
+  const fix = best, run = runSeq, gps = gpsAltitude(fix);
+  if (gps && gps.acc != null && gps.acc <= GPS_ALT_OK) { gpsElevation = gps; gpsElevBusy = false; }
+  else {
+    gpsElevBusy = true; renderGps();
+    const e = await lookupElevation(fix.lat, fix.lng);
+    if (run !== runSeq) return;
+    gpsElevation = e || gps; gpsElevBusy = false;
+  }
+  if (!pin) elevation = gpsElevation;
+  renderGps();
 }
+async function loadPinElevation() {
+  const seq = ++pinSeq, p = pin;
+  elevation = null; pinElevBusy = true; renderGps();
+  const e = await lookupElevation(p.lat, p.lng);
+  if (seq !== pinSeq || !pin) return;
+  elevation = e; pinElevBusy = false; renderGps();
+}
+// Try again for a missing map elevation, e.g. when the internet comes back.
+function retryElevation() {
+  if (gpsState !== 'done' || !best) return;
+  if (pin) { if (!elevation && !pinElevBusy) loadPinElevation(); }
+  else if ((!gpsElevation || gpsElevation.src === 'GPS' && !(gpsElevation.acc <= GPS_ALT_OK)) && !gpsElevBusy) loadGpsElevation();
+}
+
 /* ---------- satellite map with draggable pin ----------
    Leaflet + Esri World Imagery, loaded only when online. The white circle is the
    GPS accuracy; the red pin is the position that will be sent. Dragging the pin
-   or tapping the map moves it, and the reading is then marked as set by the farmer. */
+   or tapping the map moves it, and the reading is then marked as set by the farmer.
+   Double-tap zoom is off so a zoom gesture never moves the pin (pinch and +/- still zoom). */
 const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
-let leafletP = null, map = null, marker = null, ring = null, elevBusy = false, elevSeq = 0;
+const LEAFLET_SRI = {
+  js: 'sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==',
+  css: 'sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=='
+};
+let leafletP = null, map = null, marker = null, ring = null, mapSeq = 0;
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
   if (!leafletP) leafletP = new Promise((res, rej) => {
     const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.css';
+    css.integrity = LEAFLET_SRI.css; css.crossOrigin = 'anonymous';
     const js = document.createElement('script'); js.src = LEAFLET + 'leaflet.js';
-    js.onload = res; js.onerror = () => { leafletP = null; js.remove(); rej(); };
+    js.integrity = LEAFLET_SRI.js; js.crossOrigin = 'anonymous';
+    js.onload = res; js.onerror = () => { leafletP = null; js.remove(); css.remove(); rej(); };
     document.head.append(css, js);
   });
   return leafletP;
 }
 function zoomFor(acc) { return acc <= 20 ? 18 : acc <= 50 ? 17 : acc <= 150 ? 16 : acc <= 500 ? 15 : 13; }
 async function showMap() {
-  const box = $('map');
-  if (!best || !navigator.onLine) { box.hidden = true; return; }
-  try { await loadLeaflet(); } catch { box.hidden = true; return; }
+  const box = $('map'), seq = ++mapSeq;
+  if (gpsState !== 'done' || !best || !navigator.onLine) { box.hidden = true; return; }
+  try { await loadLeaflet(); } catch { if (seq === mapSeq) box.hidden = true; return; }
+  if (seq !== mapSeq || gpsState !== 'done' || !best) return;   // a new reading started while Leaflet loaded
   box.hidden = false;
   if (!map) {
-    map = L.map('mapView', { attributionControl: true });
-    map.attributionControl.setPrefix(false);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 19, maxNativeZoom: 18, attribution: 'Imagery © Esri' }).addTo(map);
+    map = L.map('mapView', { attributionControl: true, doubleClickZoom: false });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19, maxNativeZoom: 18,
+      attribution: 'Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a> | Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+    }).addTo(map);
     ring = L.circle([0, 0], { radius: 1, color: '#fff', weight: 2, fillColor: '#fff', fillOpacity: .15, interactive: false }).addTo(map);
     marker = L.marker([0, 0], { draggable: true, autoPan: true, keyboard: false,
       icon: L.divIcon({ className: 'pin-icon', html: '<span></span>', iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(map);
@@ -372,21 +427,18 @@ async function showMap() {
   marker.setLatLng([pos().lat, pos().lng]);
   map.setView([best.lat, best.lng], zoomFor(best.acc));
 }
-async function movePin(ll) {
-  if (!best || gpsState !== 'done') return;
+function movePin(ll) {
+  if (!best || gpsState !== 'done') { if (marker && best) marker.setLatLng([pos().lat, pos().lng]); return; }
   marker.setLatLng(ll);
   pin = { lat: ll.lat, lng: ll.lng, dist: map.distance(ll, [best.lat, best.lng]) };
   $('undoPin').hidden = false;
   setStatus('adjusted', Math.round(pin.dist), 'warn');
-  const seq = ++elevSeq;                      // ignore slower answers for earlier pin positions
-  elevation = null; elevBusy = true; renderGps();
-  const e = await lookupElevation(ll.lat, ll.lng);
-  if (seq !== elevSeq) return;
-  elevation = e; elevBusy = false; renderGps();
+  if ($('formErr').dataset.key === 'errElevWait') showError(null);
+  loadPinElevation();
 }
 function backToGps() {
   if (!best) return;
-  pin = null; elevSeq++; elevBusy = false; elevation = gpsElevation;
+  pin = null; pinSeq++; pinElevBusy = false; elevation = gpsElevation;
   if (marker) marker.setLatLng([best.lat, best.lng]);
   $('undoPin').hidden = true;
   renderGps(); gpsStatus();
@@ -397,39 +449,52 @@ function gpsStatus() {
   if (best.acc <= 25) setStatus('fixed', n, 'good'); else setStatus('weak', n, 'warn');
 }
 
-async function finishFix() {
+/* ---------- GPS reading ----------
+   Keeps the most accurate fix. Stops when it is within GOOD_ACC, when accuracy has not
+   improved for STALL_MS, or MAX_WATCH_MS after the first fix. If no fix arrives at all,
+   the geolocation timeout (which starts only after permission is granted) reports it,
+   and a backstop timer makes sure the button can never stay stuck on "Reading…". */
+function finishFix() {
   if (gpsState !== 'reading') return;
   stopWatch();
-  if (!best) return;
-  elevation = gpsElevation = await chooseElevation(best);
+  if (!best) { gpsState = 'idle'; renderGps(); setStatus('timeout', null, 'bad'); return; }
   gpsState = 'done';
+  elevation = gpsElevation = null;
+  loadGpsElevation();
   renderGps();
   gpsStatus();
   showMap();
 }
 function startGps() {
   if (!('geolocation' in navigator)) { setStatus('nogps', null, 'bad'); return; }
+  stopWatch();
   best = null; pin = null; elevation = gpsElevation = null; gpsState = 'reading';
-  elevSeq++; elevBusy = false;
+  runSeq++; pinSeq++; mapSeq++; gpsElevBusy = pinElevBusy = false;
   $('map').hidden = true; $('undoPin').hidden = true;
+  if ($('formErr').dataset.key === 'errElevWait') showError(null);
   ['lat', 'lng', 'elev', 'acc'].forEach(id => { $(id).textContent = '—'; $(id).classList.add('dim'); });
   renderGps();
   setStatus('searching', null, 'warn', true);
-  watchId = navigator.geolocation.watchPosition(pos => {
-    const c = pos.coords;
+  const run = runSeq;
+  watchId = navigator.geolocation.watchPosition(p => {
+    if (run !== runSeq || gpsState !== 'reading') return;
+    const c = p.coords;
+    if (!best) { clearTimeout(watchTimer); watchTimer = setTimeout(finishFix, MAX_WATCH_MS); }
     if (!best || c.accuracy < best.acc) {
-      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, altAcc: c.altitudeAccuracy, time: pos.timestamp };
+      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, altAcc: c.altitudeAccuracy, time: p.timestamp };
       renderGps();
       setStatus('improving', Math.round(c.accuracy), 'warn', true);
       clearTimeout(stallTimer); stallTimer = setTimeout(finishFix, STALL_MS);
     }
     if (best.acc <= GOOD_ACC) finishFix();
   }, err => {
+    if (run !== runSeq || gpsState !== 'reading') return;
     if (best) { finishFix(); return; }
     stopWatch(); gpsState = 'idle'; renderGps();
     setStatus(err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'unavail', null, 'bad');
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: MAX_WATCH_MS });
-  watchTimer = setTimeout(finishFix, MAX_WATCH_MS);
+  // Backstop: if the browser never answers at all (no fix, no error), give up after 2 minutes.
+  watchTimer = setTimeout(finishFix, 120000);
 }
 $('gpsBtn').addEventListener('click', startGps);
 
@@ -451,14 +516,13 @@ function message(r) {
   lines.push('Map: https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
   return lines.join('\n');
 }
-async function sendWhatsApp(r) {
-  if (r.elev == null && navigator.onLine) {          // fill missing elevation if we're now online
-    const e = await lookupElevation(r.lat, r.lng);
-    if (e) { r.elev = e.m; r.elevSrc = e.src; }
-  }
+// Opens WhatsApp straight from the tap (nothing awaited first), so the phone never blocks it.
+// The message uses exactly what is on screen.
+function sendWhatsApp(r) {
   const url = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(message(r));
   const w = window.open(url, '_blank');
-  if (!w) location.href = url;
+  if (w) { try { w.opener = null; } catch {} }
+  else location.href = url;
 }
 
 /* ---------- form ---------- */
@@ -466,34 +530,46 @@ function showError(key) { const e = $('formErr'); e.dataset.key = key || ''; e.t
 $('form').addEventListener('submit', e => {
   e.preventDefault();
   const farmer = $('farmer').value.trim(), zh = $('zh').value.trim(), en = $('en').value.trim();
-  if (!best || gpsState === 'reading') { showError('errNoGps'); $('gpsBtn').focus(); return; }
-  if (elevBusy) return;                     // elevation for a moved pin is still loading
+  if (!best || gpsState !== 'done') { showError('errNoGps'); $('gpsBtn').focus(); return; }
   if (!farmer && !zh && !en) { showError('errNoField'); $('farmer').focus(); return; }
   if (!navigator.onLine) { showError('errOffline'); return; }
+  if (elevBusy()) { showError('errElevWait'); return; }
   showError(null);
-  const rec = {
+  const p = pos();
+  sendWhatsApp({
     time: best.time || Date.now(),
-    lat: pos().lat, lng: pos().lng, acc: best.acc,
+    lat: p.lat, lng: p.lng, acc: best.acc,
     adjusted: !!pin, moved: pin ? Math.round(pin.dist) : 0, gpsLat: best.lat, gpsLng: best.lng,
     elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null, elevAcc: elevation ? elevation.acc : null,
     farmer, zh, en
-  };
-  sendWhatsApp(rec);
+  });
 });
 ['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => { if ($('formErr').dataset.key === 'errNoField') showError(null); }));
-window.addEventListener('online', () => { if ($('formErr').dataset.key === 'errOffline') showError(null); });
+window.addEventListener('online', () => {
+  if ($('formErr').dataset.key === 'errOffline') showError(null);
+  retryElevation();
+  if (gpsState === 'done' && $('map').hidden) showMap();
+});
 
 /* ---------- share this app ---------- */
 let copyTimer = null;
+function copyFallback() {
+  const i = $('appLink');
+  i.focus(); i.select(); i.setSelectionRange(0, i.value.length);   // iOS needs setSelectionRange
+  try { return document.execCommand('copy'); } catch { return false; }
+}
 $('copyLink').addEventListener('click', async () => {
+  let ok = false;
+  try { await navigator.clipboard.writeText(APP_URL); ok = true; } catch { ok = copyFallback(); }
   const b = $('copyLink');
-  try { await navigator.clipboard.writeText(APP_URL); }
-  catch { const i = $('appLink'); i.focus(); i.select(); try { document.execCommand('copy'); } catch {} }
-  b.textContent = t('copied'); b.classList.add('ok');
+  b.dataset.state = ok ? 'copied' : 'copyFailBtn';
+  b.textContent = t(b.dataset.state); b.classList.toggle('ok', ok);
+  $('copyStatus').textContent = t(ok ? 'copied' : 'copyFail');   // full explanation for screen readers
+  if (!ok) copyFallback();                   // leave the link selected so the farmer can copy it by hand
   clearTimeout(copyTimer);
-  copyTimer = setTimeout(() => { b.textContent = t('copyLink'); b.classList.remove('ok'); }, 2000);
+  copyTimer = setTimeout(() => { delete b.dataset.state; b.textContent = t('copyLink'); b.classList.remove('ok'); $('copyStatus').textContent = ''; }, 2500);
 });
-$('appLink').addEventListener('focus', e => e.target.select());
+$('appLink').addEventListener('focus', e => { e.target.select(); e.target.setSelectionRange(0, e.target.value.length); });
 
 /* ---------- light / dark ---------- */
 const THEME_KEY = 'orchard-gps-theme';
@@ -513,7 +589,8 @@ $('themeBtn').addEventListener('click', () => {
   try { localStorage.setItem(THEME_KEY, next); } catch {}
   renderTheme();
 });
-darkQuery.addEventListener('change', renderTheme);
+if (darkQuery.addEventListener) darkQuery.addEventListener('change', renderTheme);
+else if (darkQuery.addListener) darkQuery.addListener(renderTheme);   // Safari before iOS 14
 
 setLang(pickInitialLang());
 
