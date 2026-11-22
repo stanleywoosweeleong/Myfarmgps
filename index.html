@@ -60,6 +60,7 @@ h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
 .k { font-size: .8rem; color: var(--muted); }
 .v { font: 600 1.2rem/1.25 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .v.dim { color: var(--muted); font-weight: 400; }
+.v .src { font: 500 .75rem var(--font-body); color: var(--muted); margin-left: 6px; }
 .status { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 14px; font-size: .92rem; color: var(--muted); }
 .status.on { color: var(--ink); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; margin-top: .45em; }
@@ -150,17 +151,19 @@ button { font: inherit; }
 const WA_NUMBER = '60193824740';           // 019-382 4740, Malaysia (+60)
 const STORE_KEY = 'orchard-gps-records-v1';
 const LANG_KEY = 'orchard-gps-lang';
-const GOOD_ACC = 10;                       // metres; stop early once this accurate
-const MAX_WATCH_MS = 30000;
+const GOOD_ACC = 15;                       // metres; stop as soon as the position is this accurate
+const STALL_MS = 6000;                     // stop if accuracy has not improved for this long
+const MAX_WATCH_MS = 20000;                // never wait longer than this
+const GPS_ALT_OK = 15;                     // trust the phone's GPS altitude only if its own vertical error is within this
 
 const T = {
   en: {
     appName: 'Orchard Locator', gpsTitle: 'Location',
-    lat: 'Latitude', lng: 'Longitude', elev: 'Elevation', acc: 'Accuracy', m: 'm', na: 'n/a',
+    lat: 'Latitude', lng: 'Longitude', elev: 'Elevation', acc: 'Position accuracy', m: 'm', na: 'n/a', srcMap: 'map', srcGps: 'GPS',
     idle: 'Stand in the orchard and tap the button.',
     get: 'Get location', again: 'Read again', reading: 'Reading…',
     searching: 'Searching for satellites…', improving: 'Improving accuracy… ±{n} m',
-    fixed: 'Location fixed (±{n} m)', weak: 'Weak signal (±{n} m). Move to open sky and read again.',
+    fixed: 'Location fixed (±{n} m)', weak: 'Position only accurate to ±{n} m. Move to open sky and read again.',
     denied: 'Location permission is off. Allow location for this app in your phone settings.',
     timeout: 'GPS timed out. Move to open sky and try again.',
     unavail: 'Could not read GPS. Turn on Location and try again.',
@@ -176,11 +179,11 @@ const T = {
   },
   zh: {
     appName: '果园定位', gpsTitle: '位置',
-    lat: '纬度', lng: '经度', elev: '海拔', acc: '精度', m: '米', na: '无',
+    lat: '纬度', lng: '经度', elev: '海拔', acc: '位置精度', m: '米', na: '无', srcMap: '地图', srcGps: 'GPS',
     idle: '请站在果园内，然后按下按钮。',
     get: '获取位置', again: '重新定位', reading: '定位中…',
     searching: '正在搜索卫星…', improving: '正在提高精度… ±{n} 米',
-    fixed: '定位完成（±{n} 米）', weak: '信号弱（±{n} 米）。请到空旷处重新定位。',
+    fixed: '定位完成（±{n} 米）', weak: '位置精度只有 ±{n} 米。请到空旷处重新定位。',
     denied: '定位权限未开启。请在手机设置中允许此应用使用位置。',
     timeout: '定位超时。请到空旷处再试。',
     unavail: '无法读取GPS。请开启定位后再试。',
@@ -196,11 +199,11 @@ const T = {
   },
   ms: {
     appName: 'Lokasi Dusun', gpsTitle: 'Lokasi',
-    lat: 'Latitud', lng: 'Longitud', elev: 'Ketinggian', acc: 'Ketepatan', m: 'm', na: 't/a',
+    lat: 'Latitud', lng: 'Longitud', elev: 'Ketinggian', acc: 'Ketepatan kedudukan', m: 'm', na: 't/a', srcMap: 'peta', srcGps: 'GPS',
     idle: 'Berdiri di dalam dusun, kemudian tekan butang.',
     get: 'Dapatkan lokasi', again: 'Baca semula', reading: 'Sedang membaca…',
     searching: 'Mencari satelit…', improving: 'Meningkatkan ketepatan… ±{n} m',
-    fixed: 'Lokasi diperoleh (±{n} m)', weak: 'Isyarat lemah (±{n} m). Pergi ke kawasan lapang dan baca semula.',
+    fixed: 'Lokasi diperoleh (±{n} m)', weak: 'Kedudukan hanya tepat ±{n} m. Pergi ke kawasan lapang dan baca semula.',
     denied: 'Kebenaran lokasi tidak dihidupkan. Benarkan lokasi untuk aplikasi ini dalam tetapan telefon.',
     timeout: 'GPS tamat masa. Pergi ke kawasan lapang dan cuba lagi.',
     unavail: 'Tidak dapat membaca GPS. Hidupkan Lokasi dan cuba lagi.',
@@ -220,8 +223,8 @@ const HTML_LANG = { en: 'en', zh: 'zh-Hans', ms: 'ms' };
 const $ = id => document.getElementById(id);
 let lang = 'en';
 let best = null;          // best fix so far: {lat,lng,acc,alt,time}
-let watchId = null, watchTimer = null;
-let elevation = null;     // {m, src}
+let watchId = null, watchTimer = null, stallTimer = null;
+let elevation = null;     // {m, src: 'GPS'|'map', acc?}
 let gpsState = 'idle';    // idle | reading | done
 let status = { key: 'idle', n: null, cls: '', live: false };
 
@@ -265,12 +268,18 @@ function renderGps() {
   set('lat', best.lat.toFixed(6));
   set('lng', best.lng.toFixed(6));
   set('acc', '±' + Math.round(best.acc) + ' ' + t('m'));
-  if (elevation) set('elev', Math.round(elevation.m) + ' ' + t('m'));
-  else $('elev').textContent = gpsState === 'reading' ? '…' : t('na');
+  if (elevation) {
+    set('elev', Math.round(elevation.m) + ' ' + t('m'));
+    const tag = document.createElement('span'); tag.className = 'src';
+    tag.textContent = elevation.src === 'GPS'
+      ? t('srcGps') + (elevation.acc != null ? ' ±' + Math.round(elevation.acc) + ' ' + t('m') : '')
+      : t('srcMap');
+    $('elev').append(tag);
+  } else $('elev').textContent = gpsState === 'reading' ? '…' : t('na');
 }
 function stopWatch() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  watchId = null; clearTimeout(watchTimer);
+  watchId = null; clearTimeout(watchTimer); clearTimeout(stallTimer);
 }
 async function lookupElevation(lat, lng) {
   // Used when the phone gives no GPS altitude. Free, no key; needs internet.
@@ -281,12 +290,19 @@ async function lookupElevation(lat, lng) {
   } catch {}
   return null;
 }
+// Elevation: use the phone's GPS altitude only when the phone reports it as accurate.
+// Otherwise use the terrain height for this point from a map (Open-Meteo, ~90 m grid),
+// which is steadier than a weak GPS altitude. Offline with no good GPS altitude: use GPS anyway.
+async function chooseElevation(fix) {
+  const gps = fix.alt != null ? { m: fix.alt, src: 'GPS', acc: fix.altAcc } : null;
+  if (gps && gps.acc != null && gps.acc <= GPS_ALT_OK) return gps;
+  return (await lookupElevation(fix.lat, fix.lng)) || gps;
+}
 async function finishFix() {
   if (gpsState !== 'reading') return;
   stopWatch();
   if (!best) return;
-  if (best.alt != null) elevation = { m: best.alt, src: 'GPS' };
-  else elevation = await lookupElevation(best.lat, best.lng);
+  elevation = await chooseElevation(best);
   gpsState = 'done';
   renderGps();
   const n = Math.round(best.acc);
@@ -301,9 +317,10 @@ function startGps() {
   watchId = navigator.geolocation.watchPosition(pos => {
     const c = pos.coords;
     if (!best || c.accuracy < best.acc) {
-      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, time: pos.timestamp };
+      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, altAcc: c.altitudeAccuracy, time: pos.timestamp };
       renderGps();
       setStatus('improving', Math.round(c.accuracy), 'warn', true);
+      clearTimeout(stallTimer); stallTimer = setTimeout(finishFix, STALL_MS);
     }
     if (best.acc <= GOOD_ACC) finishFix();
   }, err => {
@@ -323,8 +340,9 @@ function message(r) {
   if (r.en) lines.push('Location (EN/BM): ' + r.en);
   lines.push('Latitude: ' + r.lat.toFixed(6));
   lines.push('Longitude: ' + r.lng.toFixed(6));
-  lines.push('Elevation: ' + (r.elev != null ? Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' : 'map estimate') + ')' : 'not available'));
-  lines.push('Accuracy: ±' + Math.round(r.acc) + ' m');
+  lines.push('Elevation: ' + (r.elev == null ? 'not available'
+    : Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' + (r.elevAcc != null ? ' ±' + Math.round(r.elevAcc) + ' m' : '') : 'map estimate') + ')'));
+  lines.push('Position accuracy: ±' + Math.round(r.acc) + ' m');
   lines.push('Time: ' + new Date(r.time).toLocaleString('en-MY'));
   lines.push('Map: https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
   return lines.join('\n');
@@ -354,7 +372,7 @@ $('form').addEventListener('submit', e => {
   const rec = {
     id: Date.now().toString(36), time: best.time || Date.now(),
     lat: best.lat, lng: best.lng, acc: best.acc,
-    elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null,
+    elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null, elevAcc: elevation ? elevation.acc : null,
     farmer, zh, en, sent: false
   };
   const list = load(); list.unshift(rec); save(list);
