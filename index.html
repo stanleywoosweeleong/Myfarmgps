@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
-/* Layout: one narrow column. Header with language switch, GPS reading, farm details, saved readings. */
+/* Layout: one narrow column. Header with language switch, GPS reading with map, farm details. */
 :root {
   --bg: #f4f1e8;
   --surface: #fffdf7;
@@ -82,21 +82,11 @@ input[type=text]:focus { outline: 2px solid var(--leaf); outline-offset: 1px; }
 
 button { font: inherit; }
 .btn { font-weight: 600; border-radius: 12px; border: 0; padding: 14px 16px; cursor: pointer; min-height: 50px; width: 100%; }
-.btn:focus-visible, .lang button:focus-visible, .btn-ghost:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
+.btn:focus-visible, .lang button:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
 .btn-primary { background: var(--leaf); color: var(--leaf-ink); }
 .btn-wa { background: var(--wa); color: #fff; font-size: 1.05rem; margin-top: 4px; }
 .btn:disabled { opacity: .55; cursor: default; }
 
-.list { display: grid; gap: 10px; }
-.rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
-.rec .t { font-weight: 600; overflow-wrap: anywhere; }
-.rec .m { font: .85rem var(--font-num); color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.pill { font-size: .75rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
-.pill.sent { color: var(--good); border-color: var(--good); }
-.btn-ghost { font-weight: 600; background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-height: 40px; font-size: .9rem; cursor: pointer; }
-.btn-ghost.danger { color: var(--bad); border-color: var(--bad); }
-.empty { color: var(--muted); font-size: .92rem; margin: 0; }
 </style>
 </head>
 <body>
@@ -144,15 +134,10 @@ button { font: inherit; }
     </form>
   </section>
 
-  <section aria-labelledby="hist-h">
-    <h2 id="hist-h" data-t="savedTitle">Saved readings</h2>
-    <div class="list" id="list"></div>
-  </section>
 </main>
 
 <script>
 const WA_NUMBER = '60193824740';           // 019-382 4740, Malaysia (+60)
-const STORE_KEY = 'orchard-gps-records-v1';
 const LANG_KEY = 'orchard-gps-lang';
 const GOOD_ACC = 15;                       // metres; stop as soon as the position is this accurate
 const STALL_MS = 6000;                     // stop if accuracy has not improved for this long
@@ -175,10 +160,7 @@ const T = {
     zhName: 'Location name (中文)', enName: 'Location name (English / Malay)',
     send: 'WhatsApp to Stanley Woo',
     errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
-    offline: 'Saved. You are offline, so send it from Saved readings later.',
-    savedTitle: 'Saved readings', empty: 'Readings you send are kept here, so you can send them again.',
-    sent: 'WhatsApp opened', notSent: 'Not sent', resend: 'Send again', sendNow: 'Send',
-    del: 'Delete', delQ: 'Delete this reading?', keep: 'Keep'
+    errOffline: 'No internet. Connect and tap the button again.'
   },
   zh: {
     appName: '果园定位', gpsTitle: '位置',
@@ -195,10 +177,7 @@ const T = {
     zhName: '地名（中文）', enName: '地名（英文／马来文）',
     send: 'WhatsApp 给 Stanley Woo',
     errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
-    offline: '已保存。目前没有网络，请稍后在“已保存记录”中发送。',
-    savedTitle: '已保存记录', empty: '发送过的记录会保存在这里，方便再次发送。',
-    sent: '已打开 WhatsApp', notSent: '未发送', resend: '再次发送', sendNow: '发送',
-    del: '删除', delQ: '删除这条记录？', keep: '保留'
+    errOffline: '没有网络。请连接网络后再按一次。'
   },
   ms: {
     appName: 'Lokasi Dusun', gpsTitle: 'Lokasi',
@@ -215,10 +194,7 @@ const T = {
     zhName: 'Nama tempat (中文)', enName: 'Nama tempat (Inggeris / Melayu)',
     send: 'WhatsApp kepada Stanley Woo',
     errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
-    offline: 'Disimpan. Tiada internet sekarang, jadi hantar dari Rekod disimpan nanti.',
-    savedTitle: 'Rekod disimpan', empty: 'Rekod yang dihantar disimpan di sini supaya boleh dihantar semula.',
-    sent: 'WhatsApp dibuka', notSent: 'Belum dihantar', resend: 'Hantar semula', sendNow: 'Hantar',
-    del: 'Padam', delQ: 'Padam rekod ini?', keep: 'Simpan'
+    errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.'
   }
 };
 const HTML_LANG = { en: 'en', zh: 'zh-Hans', ms: 'ms' };
@@ -247,13 +223,9 @@ function setLang(l) {
   document.querySelectorAll('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
   const err = $('formErr'); if (!err.hidden && err.dataset.key) err.textContent = t(err.dataset.key);
-  renderGps(); renderStatus(); render();
+  renderGps(); renderStatus();
 }
 document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
-
-/* ---------- storage ---------- */
-function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
-function save(list) { try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch {} }
 
 /* ---------- GPS ---------- */
 function setStatus(key, n, cls, live) { status = { key, n, cls, live }; renderStatus(); }
@@ -377,10 +349,6 @@ async function sendWhatsApp(r) {
     if (e) { r.elev = e.m; r.elevSrc = e.src; }
   }
   const url = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(message(r));
-  r.sent = true;
-  const list = load(); const i = list.findIndex(x => x.id === r.id);
-  if (i >= 0) { list[i] = r; save(list); }
-  render();
   const w = window.open(url, '_blank');
   if (!w) location.href = url;
 }
@@ -392,49 +360,18 @@ $('form').addEventListener('submit', e => {
   const farmer = $('farmer').value.trim(), zh = $('zh').value.trim(), en = $('en').value.trim();
   if (!best || gpsState === 'reading') { showError('errNoGps'); $('gpsBtn').focus(); return; }
   if (!farmer && !zh && !en) { showError('errNoField'); $('farmer').focus(); return; }
+  if (!navigator.onLine) { showError('errOffline'); return; }
   showError(null);
   const rec = {
-    id: Date.now().toString(36), time: best.time || Date.now(),
+    time: best.time || Date.now(),
     lat: best.lat, lng: best.lng, acc: best.acc,
     elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null, elevAcc: elevation ? elevation.acc : null,
-    farmer, zh, en, sent: false
+    farmer, zh, en
   };
-  const list = load(); list.unshift(rec); save(list);
-  render();
-  if (!navigator.onLine) { setStatus('offline', null, 'warn'); return; }
   sendWhatsApp(rec);
 });
 ['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => { if ($('formErr').dataset.key === 'errNoField') showError(null); }));
-
-/* ---------- saved readings ---------- */
-let confirmId = null;
-function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
-function btn(cls, text, fn) { const b = el('button', cls, text); b.type = 'button'; b.onclick = fn; return b; }
-function render() {
-  const box = $('list'); box.replaceChildren();
-  const list = load();
-  if (!list.length) { box.append(el('p', 'empty', t('empty'))); return; }
-  for (const r of list) {
-    const card = el('div', 'rec');
-    card.append(el('div', 't', [r.farmer, r.zh, r.en].filter(Boolean).join(' · ')));
-    card.append(el('div', 'm', `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)} · ${r.elev != null ? Math.round(r.elev) + ' ' + t('m') : t('elev') + ' ' + t('na')} · ±${Math.round(r.acc)} ${t('m')}`));
-    const row = el('div', 'row');
-    row.append(el('span', 'pill' + (r.sent ? ' sent' : ''), t(r.sent ? 'sent' : 'notSent')));
-    row.append(el('span', 'm', new Date(r.time).toLocaleString(HTML_LANG[lang] === 'ms' ? 'ms-MY' : lang === 'zh' ? 'zh-CN' : 'en-MY')));
-    card.append(row);
-    const act = el('div', 'row');
-    if (confirmId === r.id) {
-      act.append(el('span', null, t('delQ')),
-        btn('btn-ghost danger', t('del'), () => { save(load().filter(x => x.id !== r.id)); confirmId = null; render(); }),
-        btn('btn-ghost', t('keep'), () => { confirmId = null; render(); }));
-    } else {
-      act.append(btn('btn-ghost', t(r.sent ? 'resend' : 'sendNow'), () => sendWhatsApp(r)),
-        btn('btn-ghost', t('del'), () => { confirmId = r.id; render(); }));
-    }
-    card.append(act);
-    box.append(card);
-  }
-}
+window.addEventListener('online', () => { if ($('formErr').dataset.key === 'errOffline') showError(null); });
 
 setLang(pickInitialLang());
 
