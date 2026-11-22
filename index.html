@@ -60,13 +60,8 @@ h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
 .k { font-size: .8rem; color: var(--muted); }
 .v { font: 600 1.2rem/1.25 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .v.dim { color: var(--muted); font-weight: 400; }
-.map { position: relative; height: 200px; border-radius: 10px; overflow: hidden; background: var(--line); margin: 0 0 8px; }
-.map img { position: absolute; width: 257px; height: 257px; max-width: none; user-select: none; }
-.map .ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid rgba(255,255,255,.95); background: rgba(255,255,255,.18); }
-.map .pin { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #e5483b; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
-.map .attr { position: absolute; right: 6px; bottom: 4px; font-size: 10px; color: #fff; text-shadow: 0 0 3px #000; }
-.maphint { margin: 0 0 14px; font-size: .88rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: space-between; }
-.maphint a { color: var(--leaf); font-weight: 600; }
+.map { height: 240px; border-radius: 10px; overflow: hidden; background: var(--line); margin: 0 0 14px; }
+.map iframe { display: block; width: 100%; height: 100%; border: 0; }
 .v .src { font: 500 .75rem var(--font-body); color: var(--muted); margin-left: 6px; }
 .status { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 14px; font-size: .92rem; color: var(--muted); }
 .status.on { color: var(--ink); }
@@ -125,13 +120,7 @@ button { font: inherit; }
       <div><div class="k" data-t="acc">Accuracy</div><div class="v dim" id="acc">—</div></div>
     </div>
     <div class="status" id="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="statusText"></span></div>
-    <div class="map" id="map" hidden aria-hidden="true">
-      <div id="tiles"></div>
-      <div class="ring" id="ring"></div>
-      <div class="pin"></div>
-      <span class="attr">Imagery © Esri</span>
-    </div>
-    <p class="maphint" id="mapHint" hidden><span data-t="mapHint">Check the pin is on your orchard.</span><a id="gmaps" href="#" target="_blank" rel="noopener" data-t="openMap">Open in Google Maps</a></p>
+    <div class="map" id="map" hidden></div>
     <button class="btn btn-primary" id="gpsBtn" type="button"></button>
   </section>
 
@@ -174,7 +163,6 @@ const T = {
   en: {
     appName: 'Orchard Locator', gpsTitle: 'Location',
     lat: 'Latitude', lng: 'Longitude', elev: 'Elevation', acc: 'Position accuracy', m: 'm', na: 'n/a', srcMap: 'map', srcGps: 'GPS',
-    mapHint: 'Check the pin is on your orchard.', openMap: 'Open in Google Maps',
     idle: 'Stand in the orchard and tap the button.',
     get: 'Get location', again: 'Read again', reading: 'Reading…',
     searching: 'Searching for satellites…', improving: 'Improving accuracy… ±{n} m',
@@ -195,7 +183,6 @@ const T = {
   zh: {
     appName: '果园定位', gpsTitle: '位置',
     lat: '纬度', lng: '经度', elev: '海拔', acc: '位置精度', m: '米', na: '无', srcMap: '地图', srcGps: 'GPS',
-    mapHint: '请确认红点在您的果园上。', openMap: '在 Google 地图打开',
     idle: '请站在果园内，然后按下按钮。',
     get: '获取位置', again: '重新定位', reading: '定位中…',
     searching: '正在搜索卫星…', improving: '正在提高精度… ±{n} 米',
@@ -216,7 +203,6 @@ const T = {
   ms: {
     appName: 'Lokasi Dusun', gpsTitle: 'Lokasi',
     lat: 'Latitud', lng: 'Longitud', elev: 'Ketinggian', acc: 'Ketepatan kedudukan', m: 'm', na: 't/a', srcMap: 'peta', srcGps: 'GPS',
-    mapHint: 'Pastikan pin berada di dusun anda.', openMap: 'Buka di Google Maps',
     idle: 'Berdiri di dalam dusun, kemudian tekan butang.',
     get: 'Dapatkan lokasi', again: 'Baca semula', reading: 'Sedang membaca…',
     searching: 'Mencari satelit…', improving: 'Meningkatkan ketepatan… ±{n} m',
@@ -315,44 +301,23 @@ async function chooseElevation(fix) {
   if (gps && gps.acc != null && gps.acc <= GPS_ALT_OK) return gps;
   return (await lookupElevation(fix.lat, fix.lng)) || gps;
 }
-/* ---------- satellite preview ----------
-   Draws Esri World Imagery tiles around the fix, with the accuracy circle.
-   Only when online; if the tiles fail to load, the preview hides itself. */
-const TILE = 256;
-const TILE_URL = (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+/* ---------- Google Map ----------
+   Shows the reading on an embedded Google Map (satellite) once the fix is done.
+   Zoom follows position accuracy. Only when online. */
+const GMAPS_HL = { en: 'en', zh: 'zh-CN', ms: 'ms' };
 function showMap() {
-  if (!best) return;
-  const { lat, lng, acc } = best;
-  $('gmaps').href = `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lng.toFixed(6)}`;
-  $('mapHint').hidden = false;
   const box = $('map');
-  if (!navigator.onLine) { box.hidden = true; return; }
+  if (!best || !navigator.onLine) { box.hidden = true; return; }
+  const { lat, lng, acc } = best;
+  const z = acc <= 20 ? 18 : acc <= 50 ? 17 : acc <= 150 ? 16 : acc <= 500 ? 15 : 13;
+  const q = lat.toFixed(6) + ',' + lng.toFixed(6);
+  const frame = document.createElement('iframe');
+  frame.title = t('gpsTitle');
+  frame.loading = 'lazy';
+  frame.referrerPolicy = 'no-referrer-when-downgrade';
+  frame.src = `https://maps.google.com/maps?q=${q}&z=${z}&t=k&hl=${GMAPS_HL[lang]}&output=embed`;
+  box.replaceChildren(frame);
   box.hidden = false;
-  const W = box.clientWidth, H = box.clientHeight;
-  const mppZ0 = 156543.034 * Math.cos(lat * Math.PI / 180);           // metres per pixel at zoom 0
-  const z = Math.max(13, Math.min(18, Math.floor(Math.log2(mppZ0 * 60 / Math.max(acc, 5)))));
-  const mpp = mppZ0 / 2 ** z;
-  const n = 2 ** z, world = TILE * n;
-  const px = (lng + 180) / 360 * world;
-  const s = Math.sin(lat * Math.PI / 180);
-  const py = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * world;
-  const left = px - W / 2, top = py - H / 2;
-  const tiles = $('tiles'); tiles.replaceChildren();
-  let total = 0, failed = 0;
-  for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + H) / TILE); ty++) {
-    if (ty < 0 || ty >= n) continue;
-    for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + W) / TILE); tx++) {
-      const img = new Image(); total++;
-      img.alt = ''; img.decoding = 'async';
-      img.style.left = Math.round(tx * TILE - left) + 'px';
-      img.style.top = Math.round(ty * TILE - top) + 'px';
-      img.onerror = () => { if (++failed === total) box.hidden = true; };
-      img.src = TILE_URL(z, ((tx % n) + n) % n, ty);
-      tiles.append(img);
-    }
-  }
-  const d = Math.max(16, Math.min(2 * acc / mpp, Math.max(W, H) * 2));
-  $('ring').style.width = $('ring').style.height = Math.round(d) + 'px';
 }
 
 async function finishFix() {
@@ -369,7 +334,7 @@ async function finishFix() {
 function startGps() {
   if (!('geolocation' in navigator)) { setStatus('nogps', null, 'bad'); return; }
   best = null; elevation = null; gpsState = 'reading';
-  $('map').hidden = true; $('mapHint').hidden = true;
+  $('map').hidden = true; $('map').replaceChildren();
   ['lat', 'lng', 'elev', 'acc'].forEach(id => { $(id).textContent = '—'; $(id).classList.add('dim'); });
   renderGps();
   setStatus('searching', null, 'warn', true);
