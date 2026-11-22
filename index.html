@@ -60,8 +60,10 @@ h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
 .k { font-size: .8rem; color: var(--muted); }
 .v { font: 600 1.2rem/1.25 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .v.dim { color: var(--muted); font-weight: 400; }
-.map { height: 240px; border-radius: 10px; overflow: hidden; background: var(--line); margin: 0 0 14px; }
-.map iframe { display: block; width: 100%; height: 100%; border: 0; }
+.map { position: relative; height: 260px; border-radius: 10px; overflow: hidden; background: var(--line); margin: 0 0 14px; }
+#mapView { position: absolute; inset: 0; }
+.pin-icon span { position: absolute; left: 10px; top: 10px; width: 24px; height: 24px; border-radius: 50%; background: #e5483b; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.map .undo { position: absolute; left: 10px; bottom: 10px; z-index: 1000; font-weight: 600; font-size: .85rem; border: 0; border-radius: 8px; padding: 8px 12px; background: #fff; color: #1f2a22; box-shadow: 0 1px 4px rgba(0,0,0,.35); cursor: pointer; }
 .v .src { font: 500 .75rem var(--font-body); color: var(--muted); margin-left: 6px; }
 .status { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 14px; font-size: .92rem; color: var(--muted); }
 .status.on { color: var(--ink); }
@@ -110,7 +112,7 @@ button { font: inherit; }
       <div><div class="k" data-t="acc">Accuracy</div><div class="v dim" id="acc">—</div></div>
     </div>
     <div class="status" id="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="statusText"></span></div>
-    <div class="map" id="map" hidden></div>
+    <div class="map" id="map" hidden><div id="mapView"></div><button type="button" class="undo" id="undoPin" data-t="undoMove" hidden>Back to GPS</button></div>
     <button class="btn btn-primary" id="gpsBtn" type="button"></button>
   </section>
 
@@ -151,7 +153,8 @@ const T = {
     idle: 'Stand in the orchard and tap the button.',
     get: 'Get location', again: 'Read again', reading: 'Reading…',
     searching: 'Searching for satellites…', improving: 'Improving accuracy… ±{n} m',
-    fixed: 'Location fixed (±{n} m)', weak: 'Position only accurate to ±{n} m. Move to open sky and read again.',
+    fixed: 'Location fixed (±{n} m)', weak: 'Position only accurate to ±{n} m. Drag the pin to your orchard, or move to open sky and read again.',
+    adjusted: 'Pin moved by you, {n} m from the GPS reading.', accAdjusted: 'Set by you', undoMove: 'Back to GPS',
     denied: 'Location permission is off. Allow location for this app in your phone settings.',
     timeout: 'GPS timed out. Move to open sky and try again.',
     unavail: 'Could not read GPS. Turn on Location and try again.',
@@ -168,7 +171,8 @@ const T = {
     idle: '请站在果园内，然后按下按钮。',
     get: '获取位置', again: '重新定位', reading: '定位中…',
     searching: '正在搜索卫星…', improving: '正在提高精度… ±{n} 米',
-    fixed: '定位完成（±{n} 米）', weak: '位置精度只有 ±{n} 米。请到空旷处重新定位。',
+    fixed: '定位完成（±{n} 米）', weak: '位置精度只有 ±{n} 米。请把红点拖到您的果园，或到空旷处重新定位。',
+    adjusted: '红点已由您移动，距离 GPS 读数 {n} 米。', accAdjusted: '手动设定', undoMove: '回到 GPS 位置',
     denied: '定位权限未开启。请在手机设置中允许此应用使用位置。',
     timeout: '定位超时。请到空旷处再试。',
     unavail: '无法读取GPS。请开启定位后再试。',
@@ -185,7 +189,8 @@ const T = {
     idle: 'Berdiri di dalam dusun, kemudian tekan butang.',
     get: 'Dapatkan lokasi', again: 'Baca semula', reading: 'Sedang membaca…',
     searching: 'Mencari satelit…', improving: 'Meningkatkan ketepatan… ±{n} m',
-    fixed: 'Lokasi diperoleh (±{n} m)', weak: 'Kedudukan hanya tepat ±{n} m. Pergi ke kawasan lapang dan baca semula.',
+    fixed: 'Lokasi diperoleh (±{n} m)', weak: 'Kedudukan hanya tepat ±{n} m. Seret pin ke dusun anda, atau pergi ke kawasan lapang dan baca semula.',
+    adjusted: 'Pin dialih oleh anda, {n} m dari bacaan GPS.', accAdjusted: 'Ditetapkan oleh anda', undoMove: 'Kembali ke GPS',
     denied: 'Kebenaran lokasi tidak dihidupkan. Benarkan lokasi untuk aplikasi ini dalam tetapan telefon.',
     timeout: 'GPS tamat masa. Pergi ke kawasan lapang dan cuba lagi.',
     unavail: 'Tidak dapat membaca GPS. Hidupkan Lokasi dan cuba lagi.',
@@ -203,7 +208,10 @@ const $ = id => document.getElementById(id);
 let lang = 'en';
 let best = null;          // best fix so far: {lat,lng,acc,alt,time}
 let watchId = null, watchTimer = null, stallTimer = null;
-let elevation = null;     // {m, src: 'GPS'|'map', acc?}
+let elevation = null;     // elevation for the position being sent: {m, src: 'GPS'|'map', acc?}
+let gpsElevation = null;  // elevation for the raw GPS fix (restored by Back to GPS)
+let pin = null;           // {lat, lng, dist} when the farmer moved the pin; null = raw GPS fix
+const pos = () => pin || best;
 let gpsState = 'idle';    // idle | reading | done
 let status = { key: 'idle', n: null, cls: '', live: false };
 
@@ -240,9 +248,10 @@ function renderGps() {
   btn.textContent = t(gpsState === 'reading' ? 'reading' : gpsState === 'done' ? 'again' : 'get');
   if (!best) return;
   const set = (id, text) => { $(id).textContent = text; $(id).classList.remove('dim'); };
-  set('lat', best.lat.toFixed(6));
-  set('lng', best.lng.toFixed(6));
-  set('acc', '±' + Math.round(best.acc) + ' ' + t('m'));
+  const p = pos();
+  set('lat', p.lat.toFixed(6));
+  set('lng', p.lng.toFixed(6));
+  set('acc', pin ? t('accAdjusted') : '±' + Math.round(best.acc) + ' ' + t('m'));
   if (elevation) {
     set('elev', Math.round(elevation.m) + ' ' + t('m'));
     const tag = document.createElement('span'); tag.className = 'src';
@@ -250,7 +259,7 @@ function renderGps() {
       ? t('srcGps') + (elevation.acc != null ? ' ±' + Math.round(elevation.acc) + ' ' + t('m') : '')
       : t('srcMap');
     $('elev').append(tag);
-  } else $('elev').textContent = gpsState === 'reading' ? '…' : t('na');
+  } else $('elev').textContent = (gpsState === 'reading' || elevBusy) ? '…' : t('na');
 }
 function stopWatch() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
@@ -273,40 +282,83 @@ async function chooseElevation(fix) {
   if (gps && gps.acc != null && gps.acc <= GPS_ALT_OK) return gps;
   return (await lookupElevation(fix.lat, fix.lng)) || gps;
 }
-/* ---------- Google Map ----------
-   Shows the reading on an embedded Google Map (satellite) once the fix is done.
-   Zoom follows position accuracy. Only when online. */
-const GMAPS_HL = { en: 'en', zh: 'zh-CN', ms: 'ms' };
-function showMap() {
+/* ---------- satellite map with draggable pin ----------
+   Leaflet + Esri World Imagery, loaded only when online. The white circle is the
+   GPS accuracy; the red pin is the position that will be sent. Dragging the pin
+   or tapping the map moves it, and the reading is then marked as set by the farmer. */
+const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+let leafletP = null, map = null, marker = null, ring = null, elevBusy = false, elevSeq = 0;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (!leafletP) leafletP = new Promise((res, rej) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.css';
+    const js = document.createElement('script'); js.src = LEAFLET + 'leaflet.js';
+    js.onload = res; js.onerror = () => { leafletP = null; js.remove(); rej(); };
+    document.head.append(css, js);
+  });
+  return leafletP;
+}
+function zoomFor(acc) { return acc <= 20 ? 18 : acc <= 50 ? 17 : acc <= 150 ? 16 : acc <= 500 ? 15 : 13; }
+async function showMap() {
   const box = $('map');
   if (!best || !navigator.onLine) { box.hidden = true; return; }
-  const { lat, lng, acc } = best;
-  const z = acc <= 20 ? 18 : acc <= 50 ? 17 : acc <= 150 ? 16 : acc <= 500 ? 15 : 13;
-  const q = lat.toFixed(6) + ',' + lng.toFixed(6);
-  const frame = document.createElement('iframe');
-  frame.title = t('gpsTitle');
-  frame.loading = 'lazy';
-  frame.referrerPolicy = 'no-referrer-when-downgrade';
-  frame.src = `https://maps.google.com/maps?q=${q}&z=${z}&t=k&hl=${GMAPS_HL[lang]}&output=embed`;
-  box.replaceChildren(frame);
+  try { await loadLeaflet(); } catch { box.hidden = true; return; }
   box.hidden = false;
+  if (!map) {
+    map = L.map('mapView', { attributionControl: true });
+    map.attributionControl.setPrefix(false);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, maxNativeZoom: 18, attribution: 'Imagery © Esri' }).addTo(map);
+    ring = L.circle([0, 0], { radius: 1, color: '#fff', weight: 2, fillColor: '#fff', fillOpacity: .15, interactive: false }).addTo(map);
+    marker = L.marker([0, 0], { draggable: true, autoPan: true, keyboard: false,
+      icon: L.divIcon({ className: 'pin-icon', html: '<span></span>', iconSize: [44, 44], iconAnchor: [22, 22] }) }).addTo(map);
+    marker.on('dragend', () => movePin(marker.getLatLng()));
+    map.on('click', e => movePin(e.latlng));
+  } else map.invalidateSize();
+  ring.setLatLng([best.lat, best.lng]).setRadius(best.acc);
+  marker.setLatLng([pos().lat, pos().lng]);
+  map.setView([best.lat, best.lng], zoomFor(best.acc));
+}
+async function movePin(ll) {
+  if (!best || gpsState !== 'done') return;
+  marker.setLatLng(ll);
+  pin = { lat: ll.lat, lng: ll.lng, dist: map.distance(ll, [best.lat, best.lng]) };
+  $('undoPin').hidden = false;
+  setStatus('adjusted', Math.round(pin.dist), 'warn');
+  const seq = ++elevSeq;                      // ignore slower answers for earlier pin positions
+  elevation = null; elevBusy = true; renderGps();
+  const e = await lookupElevation(ll.lat, ll.lng);
+  if (seq !== elevSeq) return;
+  elevation = e; elevBusy = false; renderGps();
+}
+function backToGps() {
+  if (!best) return;
+  pin = null; elevSeq++; elevBusy = false; elevation = gpsElevation;
+  if (marker) marker.setLatLng([best.lat, best.lng]);
+  $('undoPin').hidden = true;
+  renderGps(); gpsStatus();
+}
+$('undoPin').addEventListener('click', backToGps);
+function gpsStatus() {
+  const n = Math.round(best.acc);
+  if (best.acc <= 25) setStatus('fixed', n, 'good'); else setStatus('weak', n, 'warn');
 }
 
 async function finishFix() {
   if (gpsState !== 'reading') return;
   stopWatch();
   if (!best) return;
-  elevation = await chooseElevation(best);
+  elevation = gpsElevation = await chooseElevation(best);
   gpsState = 'done';
   renderGps();
+  gpsStatus();
   showMap();
-  const n = Math.round(best.acc);
-  if (best.acc <= 25) setStatus('fixed', n, 'good'); else setStatus('weak', n, 'warn');
 }
 function startGps() {
   if (!('geolocation' in navigator)) { setStatus('nogps', null, 'bad'); return; }
-  best = null; elevation = null; gpsState = 'reading';
-  $('map').hidden = true; $('map').replaceChildren();
+  best = null; pin = null; elevation = gpsElevation = null; gpsState = 'reading';
+  elevSeq++; elevBusy = false;
+  $('map').hidden = true; $('undoPin').hidden = true;
   ['lat', 'lng', 'elev', 'acc'].forEach(id => { $(id).textContent = '—'; $(id).classList.add('dim'); });
   renderGps();
   setStatus('searching', null, 'warn', true);
@@ -338,7 +390,10 @@ function message(r) {
   lines.push('Longitude: ' + r.lng.toFixed(6));
   lines.push('Elevation: ' + (r.elev == null ? 'not available'
     : Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' + (r.elevAcc != null ? ' ±' + Math.round(r.elevAcc) + ' m' : '') : 'map estimate') + ')'));
-  lines.push('Position accuracy: ±' + Math.round(r.acc) + ' m');
+  if (r.adjusted) {
+    lines.push('Position: adjusted by farmer on map, ' + r.moved + ' m from GPS reading');
+    lines.push('GPS reading: ' + r.gpsLat.toFixed(6) + ', ' + r.gpsLng.toFixed(6) + ' (±' + Math.round(r.acc) + ' m)');
+  } else lines.push('Position accuracy: ±' + Math.round(r.acc) + ' m');
   lines.push('Time: ' + new Date(r.time).toLocaleString('en-MY'));
   lines.push('Map: https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
   return lines.join('\n');
@@ -359,12 +414,14 @@ $('form').addEventListener('submit', e => {
   e.preventDefault();
   const farmer = $('farmer').value.trim(), zh = $('zh').value.trim(), en = $('en').value.trim();
   if (!best || gpsState === 'reading') { showError('errNoGps'); $('gpsBtn').focus(); return; }
+  if (elevBusy) return;                     // elevation for a moved pin is still loading
   if (!farmer && !zh && !en) { showError('errNoField'); $('farmer').focus(); return; }
   if (!navigator.onLine) { showError('errOffline'); return; }
   showError(null);
   const rec = {
     time: best.time || Date.now(),
-    lat: best.lat, lng: best.lng, acc: best.acc,
+    lat: pos().lat, lng: pos().lng, acc: best.acc,
+    adjusted: !!pin, moved: pin ? Math.round(pin.dist) : 0, gpsLat: best.lat, gpsLng: best.lng,
     elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null, elevAcc: elevation ? elevation.acc : null,
     farmer, zh, en
   };
