@@ -8,6 +8,9 @@
 <script>
   // Apply the saved light/dark choice before the page paints, so it never flashes the wrong theme.
   try { const th = localStorage.getItem('orchard-gps-theme'); if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th; } catch {}
+  // First launch (no valid saved language): show the language picker before anything paints.
+  try { if (!['en', 'zh', 'ms'].includes(localStorage.getItem('orchard-gps-lang'))) document.documentElement.classList.add('picking'); }
+  catch { document.documentElement.classList.add('picking'); }
 </script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -109,6 +112,27 @@ button { font: inherit; }
 .btn-wa { background: var(--wa); color: var(--wa-ink); font-size: 1.05rem; margin-top: 4px; }
 .btn:disabled { opacity: .55; cursor: default; }
 
+/* First-launch language picker: full screen until a language is chosen. */
+#langpick { display: none; position: fixed; inset: 0; z-index: 2000; background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.picking #langpick { display: flex; }
+.picking body { overflow: hidden; }
+#langpick:focus { outline: 0; }
+#langpick img { width: 88px; height: 88px; border-radius: 20px; }
+#langpick .lptitle { margin: 4px 0 14px; font-size: 1.05rem; font-weight: 650; color: var(--muted); text-align: center; }
+#langpick button { width: min(18rem, 84vw); min-height: 58px; font: inherit; font-size: 1.15rem; font-weight: 650; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+#langpick button:active { background: var(--leaf); color: var(--leaf-ink); }
+#langpick button:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
+
+/* "New version" bar */
+.toast { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1500; display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--bg);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); box-shadow: 0 -2px 12px rgba(0,0,0,.25); }
+.toast[hidden] { display: none; }
+.toast span { flex: 1; min-width: 0; font-weight: 600; }
+.toast button { font: inherit; font-weight: 650; border: 0; border-radius: 10px; cursor: pointer; min-height: 40px; }
+#toastgo { background: var(--leaf); color: var(--leaf-ink); padding: 8px 16px; }
+#toastx { background: transparent; color: var(--bg); width: 40px; font-size: 1.1rem; }
+
 .share { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
 .share .qr { width: 132px; height: 132px; padding: 6px; background: #fff; border-radius: 10px; border: 1px solid var(--line); }
 .share .qr img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
@@ -184,6 +208,20 @@ button { font: inherit; }
 
 </main>
 
+<div id="langpick" role="dialog" aria-modal="true" tabindex="-1" aria-label="中文 · English · Bahasa Melayu">
+  <img src="icon-192.png" alt="">
+  <p class="lptitle">果园坐标 · Orchard GPS · Dusun GPS</p>
+  <button type="button" data-lang="zh" lang="zh-Hans">中文</button>
+  <button type="button" data-lang="en" lang="en">English</button>
+  <button type="button" data-lang="ms" lang="ms">Bahasa Melayu</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span data-t="updReady">A new version is ready</span>
+  <button type="button" id="toastgo" data-t="updRefresh">Refresh</button>
+  <button type="button" id="toastx" aria-label="Close" data-t-label="close">✕</button>
+</div>
+
 <script>
 const APP_URL = 'https://stanleywoosweeleong.github.io/Myfarmgps/';
 const WA_NUMBER = '60193824740';           // 019-382 4740, Malaysia (+60)
@@ -212,6 +250,7 @@ const T = {
     errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
     errOffline: 'No internet. Connect and tap the button again.',
     toDark: 'Switch to dark mode', toLight: 'Switch to light mode',
+    updReady: 'A new version is ready', updRefresh: 'Refresh', close: 'Close',
     errElevWait: 'Still getting the elevation. Tap again in a few seconds.',
     langLabel: 'Language', linkLabel: 'App link', qrAlt: 'QR code to open this app',
     copyFail: 'Copy failed. The link is selected; copy it from your keyboard menu.', copyFailBtn: 'Could not copy',
@@ -236,6 +275,7 @@ const T = {
     errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
     errOffline: '没有网络。请连接网络后再按一次。',
     toDark: '切换到深色模式', toLight: '切换到浅色模式',
+    updReady: '新版本已就绪', updRefresh: '刷新', close: '关闭',
     errElevWait: '正在获取海拔，请几秒后再按一次。',
     langLabel: '语言', linkLabel: '应用链接', qrAlt: '打开此应用的二维码',
     copyFail: '复制失败。链接已选中，请手动复制。', copyFailBtn: '无法复制',
@@ -260,6 +300,7 @@ const T = {
     errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
     errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.',
     toDark: 'Tukar ke mod gelap', toLight: 'Tukar ke mod cerah',
+    updReady: 'Versi baharu sedia', updRefresh: 'Muat semula', close: 'Tutup',
     errElevWait: 'Masih mendapatkan ketinggian. Tekan sekali lagi dalam beberapa saat.',
     langLabel: 'Bahasa', linkLabel: 'Pautan aplikasi', qrAlt: 'Kod QR untuk membuka aplikasi ini',
     copyFail: 'Gagal menyalin. Pautan telah dipilih; salin secara manual.', copyFailBtn: 'Gagal menyalin',
@@ -283,14 +324,18 @@ let status = { key: 'idle', n: null, cls: '', live: false };
 function t(key, n) { const s = (T[lang] && T[lang][key]) || T.en[key] || key; return n == null ? s : s.replace('{n}', n); }
 
 /* ---------- language ---------- */
+// First launch = no valid saved language. The picker asks; behind it the app renders
+// in the phone's language. Every choice (picker or header switch) saves through setLang.
+let FIRST_LAUNCH = false;
 function pickInitialLang() {
-  try { const s = localStorage.getItem(LANG_KEY); if (T[s]) return s; } catch {}
+  try { const saved = localStorage.getItem(LANG_KEY); if (T[saved]) return saved; } catch {}
+  FIRST_LAUNCH = true;
   const nav = (navigator.language || '').toLowerCase();
   return nav.startsWith('zh') ? 'zh' : (nav.startsWith('ms') || nav.startsWith('id')) ? 'ms' : 'en';
 }
-function setLang(l) {
+function setLang(l, save = true) {
   lang = l;
-  try { localStorage.setItem(LANG_KEY, l); } catch {}
+  if (save) { try { localStorage.setItem(LANG_KEY, l); } catch {} }   // remembered until changed again
   document.documentElement.lang = HTML_LANG[l];
   document.title = t('appName');
   document.querySelectorAll('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
@@ -593,9 +638,62 @@ $('themeBtn').addEventListener('click', () => {
 if (darkQuery.addEventListener) darkQuery.addEventListener('change', renderTheme);
 else if (darkQuery.addListener) darkQuery.addListener(renderTheme);   // Safari before iOS 14
 
-setLang(pickInitialLang());
+/* ---------- first-launch language picker ---------- */
+function showLangPick(on) {
+  document.documentElement.classList.toggle('picking', on);
+  document.querySelector('main').inert = on;
+  $('toast').inert = on;
+}
+$('langpick').addEventListener('click', e => {
+  const l = e.target.closest('button') && e.target.closest('button').dataset.lang;
+  if (!T[l]) return;
+  setLang(l);                                // saves even when it is the language already showing
+  showLangPick(false); window.scrollTo(0, 0);
+});
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+/* ---------- keep the reading and typed names across Refresh ----------
+   Refresh reloads the page, which would wipe the GPS reading and the form.
+   They are saved to sessionStorage just before reloading and restored once. */
+const DRAFT_KEY = 'orchard-gps-draft';
+function saveDraft() {
+  const d = { farmer: $('farmer').value, zh: $('zh').value, en: $('en').value };
+  if (gpsState === 'done' && best) Object.assign(d, { best, pin, gpsElevation, elevation });
+  try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch {}
+}
+function restoreDraft() {
+  let d = null;
+  try { d = JSON.parse(sessionStorage.getItem(DRAFT_KEY)); sessionStorage.removeItem(DRAFT_KEY); } catch {}
+  if (!d) return;
+  $('farmer').value = d.farmer || ''; $('zh').value = d.zh || ''; $('en').value = d.en || '';
+  if (!d.best) return;
+  best = d.best; pin = d.pin || null; gpsElevation = d.gpsElevation || null;
+  elevation = pin ? (d.elevation || null) : gpsElevation;
+  gpsState = 'done';
+  renderGps();
+  if (pin) { $('undoPin').hidden = false; setStatus('adjusted', Math.round(pin.dist), 'warn'); } else gpsStatus();
+  retryElevation();
+  showMap();
+}
+
+/* ---------- start ---------- */
+const startLang = pickInitialLang();
+setLang(startLang, !FIRST_LAUNCH);         // on first launch nothing is saved until the farmer picks
+restoreDraft();
+if (FIRST_LAUNCH) { showLangPick(true); $('langpick').focus(); }
+
+/* ---------- updates: the app opens from the saved copy; the service worker checks
+   for a newer one and this bar offers it ---------- */
+$('toastgo').addEventListener('click', () => { saveDraft(); location.reload(); });
+$('toastx').addEventListener('click', () => { $('toast').hidden = true; });
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const askForUpdate = () => {
+    if (navigator.onLine === false) return;
+    navigator.serviceWorker.ready.then(reg => { if (reg.active) reg.active.postMessage('check'); }).catch(() => {});
+  };
+  navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'updated') $('toast').hidden = false; });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').then(askForUpdate).catch(() => {}); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') askForUpdate(); });
+}
 </script>
 </body>
 </html>
