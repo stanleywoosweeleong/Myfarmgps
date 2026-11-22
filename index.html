@@ -9,16 +9,15 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
-/* Layout: one narrow column — GPS reading on top, farm details, then saved readings. Thumb-sized controls. */
+/* Layout: one narrow column. Header with language switch, GPS reading, farm details, saved readings. */
 :root {
   --bg: #f4f1e8;
   --surface: #fffdf7;
   --ink: #1f2a22;
-  --muted: #5f6b5f;
-  --line: #ddd7c6;
+  --muted: #667066;
+  --line: #e2dccb;
   --leaf: #2f5d3a;
   --leaf-ink: #ffffff;
-  --soil: #a8701f;
   --good: #2e7d4a;
   --warn: #b26a00;
   --bad: #b3362b;
@@ -30,7 +29,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #141a15; --surface: #1c241d; --ink: #e9eee6; --muted: #a3ada0; --line: #2f3a30;
-    --leaf: #6fb07c; --leaf-ink: #0d1a10; --soil: #d9a24e; --good: #6fcf8f; --warn: #f0a83c; --bad: #ff7b6e; --wa: #35c46f;
+    --leaf: #6fb07c; --leaf-ink: #0d1a10; --good: #6fcf8f; --warn: #f0a83c; --bad: #ff7b6e; --wa: #35c46f;
     color-scheme: dark;
   }
 }
@@ -40,102 +39,112 @@ body {
   background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font-body);
   padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
-main { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
-header { padding-block: 20px 4px; display: flex; align-items: center; gap: 12px; }
-header img { width: 44px; height: 44px; }
-h1 { font-size: 1.35rem; margin: 0; line-height: 1.15; text-wrap: balance; }
-h1 small { display: block; font-size: .85rem; font-weight: 500; color: var(--muted); }
-h2 { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+main { max-width: 520px; margin: 0 auto; display: grid; gap: 16px; }
 
-.coords { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+header { padding-block: 18px 2px; display: flex; align-items: center; gap: 10px; }
+header img { width: 36px; height: 36px; flex: none; }
+h1 { font-size: 1.25rem; margin: 0; flex: 1; min-width: 0; }
+.lang { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex: none; background: var(--surface); }
+.lang button {
+  font: inherit; font-size: .85rem; font-weight: 600; border: 0; background: transparent; color: var(--muted);
+  padding: 8px 11px; min-height: 38px; cursor: pointer;
+}
+.lang button + button { border-left: 1px solid var(--line); }
+.lang button[aria-pressed="true"] { background: var(--leaf); color: var(--leaf-ink); }
+
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; }
+h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
+
+.coords { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
 .coords div { min-width: 0; }
-.k { font-size: .78rem; color: var(--muted); }
-.v { font: 600 1.25rem/1.2 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.k { font-size: .8rem; color: var(--muted); }
+.v { font: 600 1.2rem/1.25 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .v.dim { color: var(--muted); font-weight: 400; }
-.status { display: flex; align-items: center; gap: 8px; margin: 14px 0 12px; font-size: .92rem; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.status { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 14px; font-size: .92rem; color: var(--muted); }
+.status.on { color: var(--ink); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; margin-top: .45em; }
 .dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
 .dot.live { animation: pulse 1.2s infinite; }
-@keyframes pulse { 50% { opacity: .35; } }
+@keyframes pulse { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
 
-label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
-label span { font-weight: 400; color: var(--muted); }
-.field { display: grid; gap: 2px; }
 .fields { display: grid; gap: 14px; }
+label { display: block; font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
 input[type=text] {
   width: 100%; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--bg); color: var(--ink);
 }
 input[type=text]:focus { outline: 2px solid var(--leaf); outline-offset: 1px; }
-.hint { font-size: .85rem; color: var(--muted); margin: 10px 0 0; }
-.error { color: var(--bad); font-size: .9rem; margin: 10px 0 0; font-weight: 600; }
+.error { color: var(--bad); font-size: .9rem; margin: 0; font-weight: 600; }
 
-button { font: inherit; font-weight: 600; border-radius: 12px; border: 0; padding: 14px 16px; cursor: pointer; min-height: 48px; }
-button:focus-visible { outline: 3px solid var(--soil); outline-offset: 2px; }
-.btn-primary { background: var(--leaf); color: var(--leaf-ink); width: 100%; }
-.btn-wa { background: var(--wa); color: #fff; width: 100%; font-size: 1.05rem; }
-.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); padding: 8px 12px; min-height: 40px; font-size: .9rem; }
-button:disabled { opacity: .55; cursor: default; }
-.to { text-align: center; font-size: .85rem; color: var(--muted); margin: 8px 0 0; }
-.to b { font-family: var(--font-num); color: var(--ink); user-select: all; }
+button { font: inherit; }
+.btn { font-weight: 600; border-radius: 12px; border: 0; padding: 14px 16px; cursor: pointer; min-height: 50px; width: 100%; }
+.btn:focus-visible, .lang button:focus-visible, .btn-ghost:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
+.btn-primary { background: var(--leaf); color: var(--leaf-ink); }
+.btn-wa { background: var(--wa); color: #fff; font-size: 1.05rem; margin-top: 4px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.to { text-align: center; font-size: .85rem; color: var(--muted); margin: 0; }
+.to b { font-family: var(--font-num); color: var(--ink); font-weight: 600; user-select: all; }
 
 .list { display: grid; gap: 10px; }
 .rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
 .rec .t { font-weight: 600; overflow-wrap: anywhere; }
 .rec .m { font: .85rem var(--font-num); color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.rec .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pill { font-size: .75rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
 .pill.sent { color: var(--good); border-color: var(--good); }
+.btn-ghost { font-weight: 600; background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-height: 40px; font-size: .9rem; cursor: pointer; }
+.btn-ghost.danger { color: var(--bad); border-color: var(--bad); }
 .empty { color: var(--muted); font-size: .92rem; margin: 0; }
-.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
-.confirm .btn-ghost.danger { color: var(--bad); border-color: var(--bad); }
 </style>
 </head>
 <body>
 <main>
   <header>
     <img src="icon.svg" alt="">
-    <h1>Orchard Locator<small>果园定位 · Lokasi Dusun</small></h1>
+    <h1 data-t="appName">Orchard Locator</h1>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" lang="en">EN</button>
+      <button type="button" data-lang="zh" lang="zh">中文</button>
+      <button type="button" data-lang="ms" lang="ms">BM</button>
+    </div>
   </header>
 
   <section aria-labelledby="gps-h">
-    <h2 id="gps-h">GPS reading · 定位 · Bacaan GPS</h2>
+    <h2 id="gps-h" data-t="gpsTitle">Location</h2>
     <div class="coords">
-      <div><div class="k">Latitude 纬度</div><div class="v dim" id="lat">—</div></div>
-      <div><div class="k">Longitude 经度</div><div class="v dim" id="lng">—</div></div>
-      <div><div class="k">Elevation 海拔 · Ketinggian</div><div class="v dim" id="elev">—</div></div>
-      <div><div class="k">Accuracy 精度 · Ketepatan</div><div class="v dim" id="acc">—</div></div>
+      <div><div class="k" data-t="lat">Latitude</div><div class="v dim" id="lat">—</div></div>
+      <div><div class="k" data-t="lng">Longitude</div><div class="v dim" id="lng">—</div></div>
+      <div><div class="k" data-t="elev">Elevation</div><div class="v dim" id="elev">—</div></div>
+      <div><div class="k" data-t="acc">Accuracy</div><div class="v dim" id="acc">—</div></div>
     </div>
-    <div class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="statusText">Stand in the orchard, then tap the button. 请站在果园内再按。</span></div>
-    <button class="btn-primary" id="gpsBtn" type="button">Get my location · 获取位置 · Dapatkan lokasi</button>
+    <div class="status" id="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="statusText"></span></div>
+    <button class="btn btn-primary" id="gpsBtn" type="button"></button>
   </section>
 
   <section aria-labelledby="farm-h">
-    <h2 id="farm-h">Farm details · 农场资料 · Butiran ladang</h2>
+    <h2 id="farm-h" data-t="detailsTitle">Farm details</h2>
     <form id="form" class="fields" novalidate>
-      <div class="field">
-        <label for="farmer">Farmer's name <span>· 园主姓名 · Nama petani</span></label>
-        <input type="text" id="farmer" autocomplete="name" placeholder="e.g. Tan Ah Kow">
+      <div>
+        <label for="farmer" data-t="farmer">Farmer's name</label>
+        <input type="text" id="farmer" autocomplete="name">
       </div>
-      <div class="field">
-        <label for="zh">Location in Chinese <span>· 中文地名</span></label>
-        <input type="text" id="zh" lang="zh" placeholder="例：文冬加叻">
+      <div>
+        <label for="zh" data-t="zhName">Location name (中文)</label>
+        <input type="text" id="zh" lang="zh">
       </div>
-      <div class="field">
-        <label for="en">Location in English / Malay <span>· 英文/马来文地名 · Nama tempat</span></label>
-        <input type="text" id="en" placeholder="e.g. Karak, Bentong">
+      <div>
+        <label for="en" data-t="enName">Location name (English / Malay)</label>
+        <input type="text" id="en">
       </div>
-      <p class="hint">Fill in at least one of the three. 至少填写一项。 Isi sekurang-kurangnya satu.</p>
       <p class="error" id="formErr" hidden></p>
-      <button class="btn-wa" type="submit" id="sendBtn">Send via WhatsApp · 发送</button>
-      <p class="to">Sends to <b>+60 19-382 4740</b></p>
+      <button class="btn btn-wa" type="submit" data-t="send">Send via WhatsApp</button>
+      <p class="to"><span data-t="sendsTo">Sends to</span> <b>+60 19-382 4740</b></p>
     </form>
   </section>
 
   <section aria-labelledby="hist-h">
-    <h2 id="hist-h">Saved readings · 已保存 · Rekod disimpan</h2>
+    <h2 id="hist-h" data-t="savedTitle">Saved readings</h2>
     <div class="list" id="list"></div>
   </section>
 </main>
@@ -143,39 +152,128 @@ button:disabled { opacity: .55; cursor: default; }
 <script>
 const WA_NUMBER = '60193824740';           // 019-382 4740, Malaysia (+60)
 const STORE_KEY = 'orchard-gps-records-v1';
+const LANG_KEY = 'orchard-gps-lang';
 const GOOD_ACC = 10;                       // metres; stop early once this accurate
 const MAX_WATCH_MS = 30000;
 
+const T = {
+  en: {
+    appName: 'Orchard Locator', gpsTitle: 'Location',
+    lat: 'Latitude', lng: 'Longitude', elev: 'Elevation', acc: 'Accuracy', m: 'm', na: 'n/a',
+    idle: 'Stand in the orchard and tap the button.',
+    get: 'Get location', again: 'Read again', reading: 'Reading…',
+    searching: 'Searching for satellites…', improving: 'Improving accuracy… ±{n} m',
+    fixed: 'Location fixed (±{n} m)', weak: 'Weak signal (±{n} m). Move to open sky and read again.',
+    denied: 'Location permission is off. Allow location for this app in your phone settings.',
+    timeout: 'GPS timed out. Move to open sky and try again.',
+    unavail: 'Could not read GPS. Turn on Location and try again.',
+    nogps: 'This phone cannot read GPS.',
+    detailsTitle: 'Farm details', farmer: "Farmer's name",
+    zhName: 'Location name (中文)', enName: 'Location name (English / Malay)',
+    send: 'Send via WhatsApp', sendsTo: 'Sends to',
+    errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
+    offline: 'Saved. You are offline, so send it from Saved readings later.',
+    savedTitle: 'Saved readings', empty: 'Readings you send are kept here, so you can send them again.',
+    sent: 'WhatsApp opened', notSent: 'Not sent', resend: 'Send again', sendNow: 'Send',
+    del: 'Delete', delQ: 'Delete this reading?', keep: 'Keep'
+  },
+  zh: {
+    appName: '果园定位', gpsTitle: '位置',
+    lat: '纬度', lng: '经度', elev: '海拔', acc: '精度', m: '米', na: '无',
+    idle: '请站在果园内，然后按下按钮。',
+    get: '获取位置', again: '重新定位', reading: '定位中…',
+    searching: '正在搜索卫星…', improving: '正在提高精度… ±{n} 米',
+    fixed: '定位完成（±{n} 米）', weak: '信号弱（±{n} 米）。请到空旷处重新定位。',
+    denied: '定位权限未开启。请在手机设置中允许此应用使用位置。',
+    timeout: '定位超时。请到空旷处再试。',
+    unavail: '无法读取GPS。请开启定位后再试。',
+    nogps: '此手机无法读取GPS。',
+    detailsTitle: '农场资料', farmer: '园主姓名',
+    zhName: '地名（中文）', enName: '地名（英文／马来文）',
+    send: '通过 WhatsApp 发送', sendsTo: '发送至',
+    errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
+    offline: '已保存。目前没有网络，请稍后在“已保存记录”中发送。',
+    savedTitle: '已保存记录', empty: '发送过的记录会保存在这里，方便再次发送。',
+    sent: '已打开 WhatsApp', notSent: '未发送', resend: '再次发送', sendNow: '发送',
+    del: '删除', delQ: '删除这条记录？', keep: '保留'
+  },
+  ms: {
+    appName: 'Lokasi Dusun', gpsTitle: 'Lokasi',
+    lat: 'Latitud', lng: 'Longitud', elev: 'Ketinggian', acc: 'Ketepatan', m: 'm', na: 't/a',
+    idle: 'Berdiri di dalam dusun, kemudian tekan butang.',
+    get: 'Dapatkan lokasi', again: 'Baca semula', reading: 'Sedang membaca…',
+    searching: 'Mencari satelit…', improving: 'Meningkatkan ketepatan… ±{n} m',
+    fixed: 'Lokasi diperoleh (±{n} m)', weak: 'Isyarat lemah (±{n} m). Pergi ke kawasan lapang dan baca semula.',
+    denied: 'Kebenaran lokasi tidak dihidupkan. Benarkan lokasi untuk aplikasi ini dalam tetapan telefon.',
+    timeout: 'GPS tamat masa. Pergi ke kawasan lapang dan cuba lagi.',
+    unavail: 'Tidak dapat membaca GPS. Hidupkan Lokasi dan cuba lagi.',
+    nogps: 'Telefon ini tidak dapat membaca GPS.',
+    detailsTitle: 'Butiran ladang', farmer: 'Nama petani',
+    zhName: 'Nama tempat (中文)', enName: 'Nama tempat (Inggeris / Melayu)',
+    send: 'Hantar melalui WhatsApp', sendsTo: 'Dihantar ke',
+    errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
+    offline: 'Disimpan. Tiada internet sekarang, jadi hantar dari Rekod disimpan nanti.',
+    savedTitle: 'Rekod disimpan', empty: 'Rekod yang dihantar disimpan di sini supaya boleh dihantar semula.',
+    sent: 'WhatsApp dibuka', notSent: 'Belum dihantar', resend: 'Hantar semula', sendNow: 'Hantar',
+    del: 'Padam', delQ: 'Padam rekod ini?', keep: 'Simpan'
+  }
+};
+const HTML_LANG = { en: 'en', zh: 'zh-Hans', ms: 'ms' };
+
 const $ = id => document.getElementById(id);
-let best = null;          // best fix so far: {lat,lng,acc,alt,altAcc,time}
+let lang = 'en';
+let best = null;          // best fix so far: {lat,lng,acc,alt,time}
 let watchId = null, watchTimer = null;
 let elevation = null;     // {m, src}
+let gpsState = 'idle';    // idle | reading | done
+let status = { key: 'idle', n: null, cls: '', live: false };
+
+function t(key, n) { const s = (T[lang] && T[lang][key]) || T.en[key] || key; return n == null ? s : s.replace('{n}', n); }
+
+/* ---------- language ---------- */
+function pickInitialLang() {
+  try { const s = localStorage.getItem(LANG_KEY); if (T[s]) return s; } catch {}
+  const nav = (navigator.language || '').toLowerCase();
+  return nav.startsWith('zh') ? 'zh' : (nav.startsWith('ms') || nav.startsWith('id')) ? 'ms' : 'en';
+}
+function setLang(l) {
+  lang = l;
+  try { localStorage.setItem(LANG_KEY, l); } catch {}
+  document.documentElement.lang = HTML_LANG[l];
+  document.title = t('appName');
+  document.querySelectorAll('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
+  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+  const err = $('formErr'); if (!err.hidden && err.dataset.key) err.textContent = t(err.dataset.key);
+  renderGps(); renderStatus(); render();
+}
+document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
 
 /* ---------- storage ---------- */
 function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
 function save(list) { try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch {} }
 
 /* ---------- GPS ---------- */
-function setStatus(text, cls, live) {
-  $('statusText').textContent = text;
-  $('dot').className = 'dot' + (cls ? ' ' + cls : '') + (live ? ' live' : '');
+function setStatus(key, n, cls, live) { status = { key, n, cls, live }; renderStatus(); }
+function renderStatus() {
+  $('statusText').textContent = t(status.key, status.n);
+  $('dot').className = 'dot' + (status.cls ? ' ' + status.cls : '') + (status.live ? ' live' : '');
+  $('status').classList.toggle('on', status.key !== 'idle');
 }
-function showFix() {
+function renderGps() {
+  const btn = $('gpsBtn');
+  btn.disabled = gpsState === 'reading';
+  btn.textContent = t(gpsState === 'reading' ? 'reading' : gpsState === 'done' ? 'again' : 'get');
   if (!best) return;
-  $('lat').textContent = best.lat.toFixed(6); $('lat').classList.remove('dim');
-  $('lng').textContent = best.lng.toFixed(6); $('lng').classList.remove('dim');
-  $('acc').textContent = '±' + Math.round(best.acc) + ' m'; $('acc').classList.remove('dim');
-  if (elevation) {
-    $('elev').textContent = Math.round(elevation.m) + ' m'; $('elev').classList.remove('dim');
-  } else {
-    $('elev').textContent = '…';
-  }
+  const set = (id, text) => { $(id).textContent = text; $(id).classList.remove('dim'); };
+  set('lat', best.lat.toFixed(6));
+  set('lng', best.lng.toFixed(6));
+  set('acc', '±' + Math.round(best.acc) + ' ' + t('m'));
+  if (elevation) set('elev', Math.round(elevation.m) + ' ' + t('m'));
+  else $('elev').textContent = gpsState === 'reading' ? '…' : t('na');
 }
 function stopWatch() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   watchId = null; clearTimeout(watchTimer);
-  $('gpsBtn').disabled = false;
-  $('gpsBtn').textContent = 'Read again · 重新定位 · Baca semula';
 }
 async function lookupElevation(lat, lng) {
   // Used when the phone gives no GPS altitude. Free, no key; needs internet.
@@ -187,52 +285,50 @@ async function lookupElevation(lat, lng) {
   return null;
 }
 async function finishFix() {
+  if (gpsState !== 'reading') return;
   stopWatch();
   if (!best) return;
   if (best.alt != null) elevation = { m: best.alt, src: 'GPS' };
   else elevation = await lookupElevation(best.lat, best.lng);
-  showFix();
-  if (!elevation) $('elev').textContent = 'n/a';
-  const accOk = best.acc <= 25;
-  setStatus(accOk ? `Location fixed (±${Math.round(best.acc)} m). 定位完成。`
-                  : `Weak signal (±${Math.round(best.acc)} m). Move to open sky and read again. 信号弱，请到空旷处重试。`,
-            accOk ? 'good' : 'warn');
+  gpsState = 'done';
+  renderGps();
+  const n = Math.round(best.acc);
+  if (best.acc <= 25) setStatus('fixed', n, 'good'); else setStatus('weak', n, 'warn');
 }
 function startGps() {
-  if (!('geolocation' in navigator)) { setStatus('This phone/browser cannot read GPS.', 'bad'); return; }
-  best = null; elevation = null;
-  $('gpsBtn').disabled = true; $('gpsBtn').textContent = 'Reading… 定位中…';
-  setStatus('Searching for satellites… 正在搜索卫星…', 'warn', true);
+  if (!('geolocation' in navigator)) { setStatus('nogps', null, 'bad'); return; }
+  best = null; elevation = null; gpsState = 'reading';
+  ['lat', 'lng', 'elev', 'acc'].forEach(id => { $(id).textContent = '—'; $(id).classList.add('dim'); });
+  renderGps();
+  setStatus('searching', null, 'warn', true);
   watchId = navigator.geolocation.watchPosition(pos => {
     const c = pos.coords;
     if (!best || c.accuracy < best.acc) {
-      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, altAcc: c.altitudeAccuracy, time: pos.timestamp };
-      showFix();
-      setStatus(`Improving accuracy… ±${Math.round(c.accuracy)} m`, 'warn', true);
+      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, time: pos.timestamp };
+      renderGps();
+      setStatus('improving', Math.round(c.accuracy), 'warn', true);
     }
     if (best.acc <= GOOD_ACC) finishFix();
   }, err => {
-    stopWatch();
-    const msg = err.code === 1 ? 'Location permission denied. Allow location for this app in phone settings. 请允许定位权限。'
-              : err.code === 3 ? 'GPS timed out. Move to open sky and try again. 定位超时。'
-              : 'Could not read GPS. Turn on Location and try again. 请开启定位。';
-    if (best) finishFix(); else setStatus(msg, 'bad');
+    if (best) { finishFix(); return; }
+    stopWatch(); gpsState = 'idle'; renderGps();
+    setStatus(err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'unavail', null, 'bad');
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: MAX_WATCH_MS });
   watchTimer = setTimeout(finishFix, MAX_WATCH_MS);
 }
 $('gpsBtn').addEventListener('click', startGps);
 
-/* ---------- message ---------- */
+/* ---------- WhatsApp message (always English labels, for the recipient) ---------- */
 function message(r) {
-  const lines = ['*Orchard GPS reading 果园定位记录*'];
-  if (r.farmer) lines.push('Farmer 园主: ' + r.farmer);
-  if (r.zh) lines.push('Location 地名 (中文): ' + r.zh);
+  const lines = ['*Orchard GPS reading*'];
+  if (r.farmer) lines.push('Farmer: ' + r.farmer);
+  if (r.zh) lines.push('Location (中文): ' + r.zh);
   if (r.en) lines.push('Location (EN/BM): ' + r.en);
-  lines.push('Latitude 纬度: ' + r.lat.toFixed(6));
-  lines.push('Longitude 经度: ' + r.lng.toFixed(6));
-  lines.push('Elevation 海拔: ' + (r.elev != null ? Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' : 'map estimate') + ')' : 'not available'));
-  lines.push('Accuracy 精度: ±' + Math.round(r.acc) + ' m');
-  lines.push('Time 时间: ' + new Date(r.time).toLocaleString('en-MY'));
+  lines.push('Latitude: ' + r.lat.toFixed(6));
+  lines.push('Longitude: ' + r.lng.toFixed(6));
+  lines.push('Elevation: ' + (r.elev != null ? Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' : 'map estimate') + ')' : 'not available'));
+  lines.push('Accuracy: ±' + Math.round(r.acc) + ' m');
+  lines.push('Time: ' + new Date(r.time).toLocaleString('en-MY'));
   lines.push('Map: https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
   return lines.join('\n');
 }
@@ -251,13 +347,13 @@ async function sendWhatsApp(r) {
 }
 
 /* ---------- form ---------- */
-$('form').addEventListener('submit', async e => {
+function showError(key) { const e = $('formErr'); e.dataset.key = key || ''; e.textContent = key ? t(key) : ''; e.hidden = !key; }
+$('form').addEventListener('submit', e => {
   e.preventDefault();
   const farmer = $('farmer').value.trim(), zh = $('zh').value.trim(), en = $('en').value.trim();
-  const err = $('formErr');
-  if (!best) { err.textContent = 'Get the GPS location first. 请先获取位置。 Dapatkan lokasi dahulu.'; err.hidden = false; $('gpsBtn').focus(); return; }
-  if (!farmer && !zh && !en) { err.textContent = 'Fill in at least one field. 请至少填写一项。 Isi sekurang-kurangnya satu.'; err.hidden = false; $('farmer').focus(); return; }
-  err.hidden = true;
+  if (!best || gpsState === 'reading') { showError('errNoGps'); $('gpsBtn').focus(); return; }
+  if (!farmer && !zh && !en) { showError('errNoField'); $('farmer').focus(); return; }
+  showError(null);
   const rec = {
     id: Date.now().toString(36), time: best.time || Date.now(),
     lat: best.lat, lng: best.lng, acc: best.acc,
@@ -266,49 +362,42 @@ $('form').addEventListener('submit', async e => {
   };
   const list = load(); list.unshift(rec); save(list);
   render();
-  if (!navigator.onLine) {
-    setStatus('Saved. No internet now — send it from "Saved readings" later. 已保存，有网络时再发送。', 'warn');
-    return;
-  }
+  if (!navigator.onLine) { setStatus('offline', null, 'warn'); return; }
   sendWhatsApp(rec);
 });
+['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => { if ($('formErr').dataset.key === 'errNoField') showError(null); }));
 
-/* ---------- history ---------- */
+/* ---------- saved readings ---------- */
 let confirmId = null;
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+function btn(cls, text, fn) { const b = el('button', cls, text); b.type = 'button'; b.onclick = fn; return b; }
 function render() {
   const box = $('list'); box.replaceChildren();
   const list = load();
-  if (!list.length) { box.append(el('p', 'empty', 'Readings you save appear here, so you can resend them if WhatsApp did not open. 保存的记录会显示在这里。')); return; }
+  if (!list.length) { box.append(el('p', 'empty', t('empty'))); return; }
   for (const r of list) {
     const card = el('div', 'rec');
     card.append(el('div', 't', [r.farmer, r.zh, r.en].filter(Boolean).join(' · ')));
-    card.append(el('div', 'm', `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)} · ${r.elev != null ? Math.round(r.elev) + ' m' : 'elev n/a'} · ±${Math.round(r.acc)} m`));
+    card.append(el('div', 'm', `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)} · ${r.elev != null ? Math.round(r.elev) + ' ' + t('m') : t('elev') + ' ' + t('na')} · ±${Math.round(r.acc)} ${t('m')}`));
     const row = el('div', 'row');
-    row.append(el('span', 'pill' + (r.sent ? ' sent' : ''), r.sent ? 'WhatsApp opened' : 'Not sent yet'));
-    row.append(el('span', 'm', new Date(r.time).toLocaleString('en-MY')));
+    row.append(el('span', 'pill' + (r.sent ? ' sent' : ''), t(r.sent ? 'sent' : 'notSent')));
+    row.append(el('span', 'm', new Date(r.time).toLocaleString(HTML_LANG[lang] === 'ms' ? 'ms-MY' : lang === 'zh' ? 'zh-CN' : 'en-MY')));
     card.append(row);
     const act = el('div', 'row');
     if (confirmId === r.id) {
-      const c = el('div', 'confirm');
-      c.append(el('span', null, 'Delete this reading?'));
-      const yes = el('button', 'btn-ghost danger', 'Delete'); yes.type = 'button';
-      yes.onclick = () => { save(load().filter(x => x.id !== r.id)); confirmId = null; render(); };
-      const no = el('button', 'btn-ghost', 'Keep'); no.type = 'button';
-      no.onclick = () => { confirmId = null; render(); };
-      c.append(yes, no); act.append(c);
+      act.append(el('span', null, t('delQ')),
+        btn('btn-ghost danger', t('del'), () => { save(load().filter(x => x.id !== r.id)); confirmId = null; render(); }),
+        btn('btn-ghost', t('keep'), () => { confirmId = null; render(); }));
     } else {
-      const send = el('button', 'btn-ghost', r.sent ? 'Send again 再发送' : 'Send 发送'); send.type = 'button';
-      send.onclick = () => sendWhatsApp(r);
-      const del = el('button', 'btn-ghost', 'Delete 删除'); del.type = 'button';
-      del.onclick = () => { confirmId = r.id; render(); };
-      act.append(send, del);
+      act.append(btn('btn-ghost', t(r.sent ? 'resend' : 'sendNow'), () => sendWhatsApp(r)),
+        btn('btn-ghost', t('del'), () => { confirmId = r.id; render(); }));
     }
     card.append(act);
     box.append(card);
   }
 }
-render();
+
+setLang(pickInitialLang());
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
