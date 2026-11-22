@@ -84,7 +84,7 @@ button { font: inherit; }
 .btn-wa { background: var(--wa); color: #fff; font-size: 1.05rem; margin-top: 4px; }
 .btn:disabled { opacity: .55; cursor: default; }
 .to { text-align: center; font-size: .85rem; color: var(--muted); margin: 0; }
-.to b { font-family: var(--font-num); color: var(--ink); font-weight: 600; user-select: all; }
+.to b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .list { display: grid; gap: 10px; }
 .rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
@@ -139,7 +139,7 @@ button { font: inherit; }
       </div>
       <p class="error" id="formErr" hidden></p>
       <button class="btn btn-wa" type="submit" data-t="send">Send via WhatsApp</button>
-      <p class="to"><span data-t="sendsTo">Sends to</span> <b>+60 19-382 4740</b></p>
+      <p class="to"><span data-t="sendsTo">Sends to</span> <b>Stanley Woo 019-382 4740</b></p>
     </form>
   </section>
 
