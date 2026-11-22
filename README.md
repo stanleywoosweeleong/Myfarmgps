@@ -9,6 +9,6 @@ A phone web app that records an orchard's GPS position and sends it by WhatsApp.
 - When GPS is poor the farmer can drag the pin, or tap the map, to the right spot; the message then says "adjusted by farmer" and includes the original GPS reading
 - Opens offline once loaded; sending needs internet (the app asks the farmer to connect and tap again)
 
-Live app: https://stanleywoosweeleong.github.io/myfarmgps/
+Live app: https://stanleywoosweeleong.github.io/Myfarmgps/
 
 The WhatsApp number is `WA_NUMBER` near the top of the script in `index.html`.
