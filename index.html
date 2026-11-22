@@ -104,8 +104,10 @@ input[type=text] {
 }
 input[type=text]:focus { outline: 2px solid var(--leaf); outline-offset: 1px; }
 .error { color: var(--bad); font-size: .9rem; margin: 0; font-weight: 600; }
+.ferr { margin-top: 6px; }
+input[aria-invalid="true"] { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
 
-button { font: inherit; }
+button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
 .btn { font-weight: 600; border-radius: 12px; border: 0; padding: 14px 16px; cursor: pointer; min-height: 50px; width: 100%; }
 .btn:focus-visible, .lang button:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
 .btn-primary { background: var(--leaf); color: var(--leaf-ink); }
@@ -179,15 +181,17 @@ button { font: inherit; }
     <form id="form" class="fields" novalidate>
       <div>
         <label for="farmer" data-t="farmer">Farmer's name</label>
-        <input type="text" id="farmer" autocomplete="name">
+        <input type="text" id="farmer" autocomplete="name" aria-describedby="farmerErr">
+        <p class="error ferr" id="farmerErr" hidden></p>
       </div>
       <div>
         <label for="zh" data-t="zhName">Location name (中文)</label>
-        <input type="text" id="zh" lang="zh">
+        <input type="text" id="zh" lang="zh" aria-describedby="locErr">
       </div>
       <div>
         <label for="en" data-t="enName">Location name (English / Malay)</label>
-        <input type="text" id="en">
+        <input type="text" id="en" aria-describedby="locErr">
+        <p class="error ferr" id="locErr" hidden></p>
       </div>
       <p class="error" id="formErr" hidden></p>
       <button class="btn btn-wa" type="submit" data-t="send">WhatsApp to Stanley Woo</button>
@@ -251,7 +255,7 @@ const T = {
     detailsTitle: 'Farm details', farmer: "Farmer's name",
     zhName: 'Location name (中文)', enName: 'Location name (English / Malay)',
     send: 'WhatsApp to Stanley Woo',
-    errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
+    errNoGps: 'Get the location first.', errFarmer: 'Please write your name.', errLocation: 'Fill in at least one location name.',
     errOffline: 'No internet. Connect and tap the button again.',
     toDark: 'Switch to dark mode', toLight: 'Switch to light mode',
     updReady: 'A new version is ready', updRefresh: 'Refresh', close: 'Close', version: 'Version',
@@ -278,7 +282,7 @@ const T = {
     detailsTitle: '农场资料', farmer: '园主姓名',
     zhName: '地名（中文）', enName: '地名（英文／马来文）',
     send: 'WhatsApp 给 Stanley Woo',
-    errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
+    errNoGps: '请先获取位置。', errFarmer: '请填写您的姓名。', errLocation: '请至少填写一个地名。',
     errOffline: '没有网络。请连接网络后再按一次。',
     toDark: '切换到深色模式', toLight: '切换到浅色模式',
     updReady: '新版本已就绪', updRefresh: '刷新', close: '关闭', version: '版本',
@@ -305,7 +309,7 @@ const T = {
     detailsTitle: 'Butiran ladang', farmer: 'Nama petani',
     zhName: 'Nama tempat (中文)', enName: 'Nama tempat (Inggeris / Melayu)',
     send: 'WhatsApp kepada Stanley Woo',
-    errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
+    errNoGps: 'Dapatkan lokasi dahulu.', errFarmer: 'Sila tulis nama anda.', errLocation: 'Sila isi sekurang-kurangnya satu nama tempat.',
     errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.',
     toDark: 'Tukar ke mod gelap', toLight: 'Tukar ke mod cerah',
     updReady: 'Versi baharu sedia', updRefresh: 'Muat semula', close: 'Tutup', version: 'Versi',
@@ -351,7 +355,7 @@ function setLang(l, save = true) {
   document.querySelectorAll('[data-t-alt]').forEach(n => { n.alt = t(n.dataset.tAlt); });
   const cb = $('copyLink'); if (cb.dataset.state) cb.textContent = t(cb.dataset.state);
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
-  const err = $('formErr'); if (!err.hidden && err.dataset.key) err.textContent = t(err.dataset.key);
+  ['formErr', 'farmerErr', 'locErr'].forEach(id => { const e = $(id); if (!e.hidden && e.dataset.key) e.textContent = t(e.dataset.key); });
   renderGps(); renderStatus(); renderTheme();
   $('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(t('shareMsg') + '\n' + APP_URL);
 }
@@ -605,12 +609,25 @@ function sendWhatsApp(r) {
 }
 
 /* ---------- form ---------- */
-function showError(key) { const e = $('formErr'); e.dataset.key = key || ''; e.textContent = key ? t(key) : ''; e.hidden = !key; }
+function showError(key, id = 'formErr') { const e = $(id); e.dataset.key = key || ''; e.textContent = key ? t(key) : ''; e.hidden = !key; }
+// Farmer's name is required; of the two location names, at least one. Each problem is shown
+// under its own field and clears as soon as the farmer types there.
+function checkFields(show) {
+  const farmerOk = !!$('farmer').value.trim();
+  const locOk = !!($('zh').value.trim() || $('en').value.trim());
+  if (show || farmerOk) { showError(farmerOk ? null : 'errFarmer', 'farmerErr'); $('farmer').setAttribute('aria-invalid', String(!farmerOk)); }
+  if (show || locOk) { showError(locOk ? null : 'errLocation', 'locErr'); ['zh', 'en'].forEach(id => $(id).setAttribute('aria-invalid', String(!locOk))); }
+  return { farmerOk, locOk };
+}
 $('form').addEventListener('submit', e => {
   e.preventDefault();
   const farmer = $('farmer').value.trim(), zh = $('zh').value.trim(), en = $('en').value.trim();
-  if (!best || gpsState !== 'done') { showError('errNoGps'); $('gpsBtn').focus(); return; }
-  if (!farmer && !zh && !en) { showError('errNoField'); $('farmer').focus(); return; }
+  const { farmerOk, locOk } = checkFields(true);
+  const gpsOk = !!best && gpsState === 'done';
+  showError(gpsOk ? null : 'errNoGps');
+  if (!gpsOk) { $('gpsBtn').focus(); return; }
+  if (!farmerOk) { $('farmer').focus(); return; }
+  if (!locOk) { $('zh').focus(); return; }
   if (!navigator.onLine) { showError('errOffline'); return; }
   if (pinUnlocked()) { showError('errLock'); $('gpsBtn').focus(); return; }
   if (elevBusy()) { showError('errElevWait'); return; }
@@ -624,7 +641,7 @@ $('form').addEventListener('submit', e => {
     farmer, zh, en
   });
 });
-['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => { if ($('formErr').dataset.key === 'errNoField') showError(null); }));
+['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => checkFields(false)));
 window.addEventListener('online', () => {
   if ($('formErr').dataset.key === 'errOffline') showError(null);
   retryElevation();
