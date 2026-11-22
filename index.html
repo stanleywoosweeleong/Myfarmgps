@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orchard Locator</title>
+<meta name="theme-color" content="#2f5d3a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+/* Layout: one narrow column — GPS reading on top, farm details, then saved readings. Thumb-sized controls. */
+:root {
+  --bg: #f4f1e8;
+  --surface: #fffdf7;
+  --ink: #1f2a22;
+  --muted: #5f6b5f;
+  --line: #ddd7c6;
+  --leaf: #2f5d3a;
+  --leaf-ink: #ffffff;
+  --soil: #a8701f;
+  --good: #2e7d4a;
+  --warn: #b26a00;
+  --bad: #b3362b;
+  --wa: #1f9d55;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-num: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141a15; --surface: #1c241d; --ink: #e9eee6; --muted: #a3ada0; --line: #2f3a30;
+    --leaf: #6fb07c; --leaf-ink: #0d1a10; --soil: #d9a24e; --good: #6fcf8f; --warn: #f0a83c; --bad: #ff7b6e; --wa: #35c46f;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font-body);
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+main { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+header { padding-block: 20px 4px; display: flex; align-items: center; gap: 12px; }
+header img { width: 44px; height: 44px; }
+h1 { font-size: 1.35rem; margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 small { display: block; font-size: .85rem; font-weight: 500; color: var(--muted); }
+h2 { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+
+.coords { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.coords div { min-width: 0; }
+.k { font-size: .78rem; color: var(--muted); }
+.v { font: 600 1.25rem/1.2 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.v.dim { color: var(--muted); font-weight: 400; }
+.status { display: flex; align-items: center; gap: 8px; margin: 14px 0 12px; font-size: .92rem; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+.dot.live { animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+
+label { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 4px; }
+label span { font-weight: 400; color: var(--muted); }
+.field { display: grid; gap: 2px; }
+.fields { display: grid; gap: 14px; }
+input[type=text] {
+  width: 100%; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink);
+}
+input[type=text]:focus { outline: 2px solid var(--leaf); outline-offset: 1px; }
+.hint { font-size: .85rem; color: var(--muted); margin: 10px 0 0; }
+.error { color: var(--bad); font-size: .9rem; margin: 10px 0 0; font-weight: 600; }
+
+button { font: inherit; font-weight: 600; border-radius: 12px; border: 0; padding: 14px 16px; cursor: pointer; min-height: 48px; }
+button:focus-visible { outline: 3px solid var(--soil); outline-offset: 2px; }
+.btn-primary { background: var(--leaf); color: var(--leaf-ink); width: 100%; }
+.btn-wa { background: var(--wa); color: #fff; width: 100%; font-size: 1.05rem; }
+.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); padding: 8px 12px; min-height: 40px; font-size: .9rem; }
+button:disabled { opacity: .55; cursor: default; }
+.to { text-align: center; font-size: .85rem; color: var(--muted); margin: 8px 0 0; }
+.to b { font-family: var(--font-num); color: var(--ink); user-select: all; }
+
+.list { display: grid; gap: 10px; }
+.rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
+.rec .t { font-weight: 600; overflow-wrap: anywhere; }
+.rec .m { font: .85rem var(--font-num); color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rec .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pill { font-size: .75rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.pill.sent { color: var(--good); border-color: var(--good); }
+.empty { color: var(--muted); font-size: .92rem; margin: 0; }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+.confirm .btn-ghost.danger { color: var(--bad); border-color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.svg" alt="">
+    <h1>Orchard Locator<small>果园定位 · Lokasi Dusun</small></h1>
+  </header>
+
+  <section aria-labelledby="gps-h">
+    <h2 id="gps-h">GPS reading · 定位 · Bacaan GPS</h2>
+    <div class="coords">
+      <div><div class="k">Latitude 纬度</div><div class="v dim" id="lat">—</div></div>
+      <div><div class="k">Longitude 经度</div><div class="v dim" id="lng">—</div></div>
+      <div><div class="k">Elevation 海拔 · Ketinggian</div><div class="v dim" id="elev">—</div></div>
+      <div><div class="k">Accuracy 精度 · Ketepatan</div><div class="v dim" id="acc">—</div></div>
+    </div>
+    <div class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="statusText">Stand in the orchard, then tap the button. 请站在果园内再按。</span></div>
+    <button class="btn-primary" id="gpsBtn" type="button">Get my location · 获取位置 · Dapatkan lokasi</button>
+  </section>
+
+  <section aria-labelledby="farm-h">
+    <h2 id="farm-h">Farm details · 农场资料 · Butiran ladang</h2>
+    <form id="form" class="fields" novalidate>
+      <div class="field">
+        <label for="farmer">Farmer's name <span>· 园主姓名 · Nama petani</span></label>
+        <input type="text" id="farmer" autocomplete="name" placeholder="e.g. Tan Ah Kow">
+      </div>
+      <div class="field">
+        <label for="zh">Location in Chinese <span>· 中文地名</span></label>
+        <input type="text" id="zh" lang="zh" placeholder="例：文冬加叻">
+      </div>
+      <div class="field">
+        <label for="en">Location in English / Malay <span>· 英文/马来文地名 · Nama tempat</span></label>
+        <input type="text" id="en" placeholder="e.g. Karak, Bentong">
+      </div>
+      <p class="hint">Fill in at least one of the three. 至少填写一项。 Isi sekurang-kurangnya satu.</p>
+      <p class="error" id="formErr" hidden></p>
+      <button class="btn-wa" type="submit" id="sendBtn">Send via WhatsApp · 发送</button>
+      <p class="to">Sends to <b>+60 19-382 4740</b></p>
+    </form>
+  </section>
+
+  <section aria-labelledby="hist-h">
+    <h2 id="hist-h">Saved readings · 已保存 · Rekod disimpan</h2>
+    <div class="list" id="list"></div>
+  </section>
+</main>
+
+<script>
+const WA_NUMBER = '60193824740';           // 019-382 4740, Malaysia (+60)
+const STORE_KEY = 'orchard-gps-records-v1';
+const GOOD_ACC = 10;                       // metres; stop early once this accurate
+const MAX_WATCH_MS = 30000;
+
+const $ = id => document.getElementById(id);
+let best = null;          // best fix so far: {lat,lng,acc,alt,altAcc,time}
+let watchId = null, watchTimer = null;
+let elevation = null;     // {m, src}
+
+/* ---------- storage ---------- */
+function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
+function save(list) { try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch {} }
+
+/* ---------- GPS ---------- */
+function setStatus(text, cls, live) {
+  $('statusText').textContent = text;
+  $('dot').className = 'dot' + (cls ? ' ' + cls : '') + (live ? ' live' : '');
+}
+function showFix() {
+  if (!best) return;
+  $('lat').textContent = best.lat.toFixed(6); $('lat').classList.remove('dim');
+  $('lng').textContent = best.lng.toFixed(6); $('lng').classList.remove('dim');
+  $('acc').textContent = '±' + Math.round(best.acc) + ' m'; $('acc').classList.remove('dim');
+  if (elevation) {
+    $('elev').textContent = Math.round(elevation.m) + ' m'; $('elev').classList.remove('dim');
+  } else {
+    $('elev').textContent = '…';
+  }
+}
+function stopWatch() {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  watchId = null; clearTimeout(watchTimer);
+  $('gpsBtn').disabled = false;
+  $('gpsBtn').textContent = 'Read again · 重新定位 · Baca semula';
+}
+async function lookupElevation(lat, lng) {
+  // Used when the phone gives no GPS altitude. Free, no key; needs internet.
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
+    const j = await r.json();
+    if (Array.isArray(j.elevation) && j.elevation[0] != null) return { m: j.elevation[0], src: 'map' };
+  } catch {}
+  return null;
+}
+async function finishFix() {
+  stopWatch();
+  if (!best) return;
+  if (best.alt != null) elevation = { m: best.alt, src: 'GPS' };
+  else elevation = await lookupElevation(best.lat, best.lng);
+  showFix();
+  if (!elevation) $('elev').textContent = 'n/a';
+  const accOk = best.acc <= 25;
+  setStatus(accOk ? `Location fixed (±${Math.round(best.acc)} m). 定位完成。`
+                  : `Weak signal (±${Math.round(best.acc)} m). Move to open sky and read again. 信号弱，请到空旷处重试。`,
+            accOk ? 'good' : 'warn');
+}
+function startGps() {
+  if (!('geolocation' in navigator)) { setStatus('This phone/browser cannot read GPS.', 'bad'); return; }
+  best = null; elevation = null;
+  $('gpsBtn').disabled = true; $('gpsBtn').textContent = 'Reading… 定位中…';
+  setStatus('Searching for satellites… 正在搜索卫星…', 'warn', true);
+  watchId = navigator.geolocation.watchPosition(pos => {
+    const c = pos.coords;
+    if (!best || c.accuracy < best.acc) {
+      best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, alt: c.altitude, altAcc: c.altitudeAccuracy, time: pos.timestamp };
+      showFix();
+      setStatus(`Improving accuracy… ±${Math.round(c.accuracy)} m`, 'warn', true);
+    }
+    if (best.acc <= GOOD_ACC) finishFix();
+  }, err => {
+    stopWatch();
+    const msg = err.code === 1 ? 'Location permission denied. Allow location for this app in phone settings. 请允许定位权限。'
+              : err.code === 3 ? 'GPS timed out. Move to open sky and try again. 定位超时。'
+              : 'Could not read GPS. Turn on Location and try again. 请开启定位。';
+    if (best) finishFix(); else setStatus(msg, 'bad');
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: MAX_WATCH_MS });
+  watchTimer = setTimeout(finishFix, MAX_WATCH_MS);
+}
+$('gpsBtn').addEventListener('click', startGps);
+
+/* ---------- message ---------- */
+function message(r) {
+  const lines = ['*Orchard GPS reading 果园定位记录*'];
+  if (r.farmer) lines.push('Farmer 园主: ' + r.farmer);
+  if (r.zh) lines.push('Location 地名 (中文): ' + r.zh);
+  if (r.en) lines.push('Location (EN/BM): ' + r.en);
+  lines.push('Latitude 纬度: ' + r.lat.toFixed(6));
+  lines.push('Longitude 经度: ' + r.lng.toFixed(6));
+  lines.push('Elevation 海拔: ' + (r.elev != null ? Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' : 'map estimate') + ')' : 'not available'));
+  lines.push('Accuracy 精度: ±' + Math.round(r.acc) + ' m');
+  lines.push('Time 时间: ' + new Date(r.time).toLocaleString('en-MY'));
+  lines.push('Map: https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
+  return lines.join('\n');
+}
+async function sendWhatsApp(r) {
+  if (r.elev == null && navigator.onLine) {          // fill missing elevation if we're now online
+    const e = await lookupElevation(r.lat, r.lng);
+    if (e) { r.elev = e.m; r.elevSrc = e.src; }
+  }
+  const url = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(message(r));
+  r.sent = true;
+  const list = load(); const i = list.findIndex(x => x.id === r.id);
+  if (i >= 0) { list[i] = r; save(list); }
+  render();
+  const w = window.open(url, '_blank');
+  if (!w) location.href = url;
+}
+
+/* ---------- form ---------- */
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const farmer = $('farmer').value.trim(), zh = $('zh').value.trim(), en = $('en').value.trim();
+  const err = $('formErr');
+  if (!best) { err.textContent = 'Get the GPS location first. 请先获取位置。 Dapatkan lokasi dahulu.'; err.hidden = false; $('gpsBtn').focus(); return; }
+  if (!farmer && !zh && !en) { err.textContent = 'Fill in at least one field. 请至少填写一项。 Isi sekurang-kurangnya satu.'; err.hidden = false; $('farmer').focus(); return; }
+  err.hidden = true;
+  const rec = {
+    id: Date.now().toString(36), time: best.time || Date.now(),
+    lat: best.lat, lng: best.lng, acc: best.acc,
+    elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null,
+    farmer, zh, en, sent: false
+  };
+  const list = load(); list.unshift(rec); save(list);
+  render();
+  if (!navigator.onLine) {
+    setStatus('Saved. No internet now — send it from "Saved readings" later. 已保存，有网络时再发送。', 'warn');
+    return;
+  }
+  sendWhatsApp(rec);
+});
+
+/* ---------- history ---------- */
+let confirmId = null;
+function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+function render() {
+  const box = $('list'); box.replaceChildren();
+  const list = load();
+  if (!list.length) { box.append(el('p', 'empty', 'Readings you save appear here, so you can resend them if WhatsApp did not open. 保存的记录会显示在这里。')); return; }
+  for (const r of list) {
+    const card = el('div', 'rec');
+    card.append(el('div', 't', [r.farmer, r.zh, r.en].filter(Boolean).join(' · ')));
+    card.append(el('div', 'm', `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)} · ${r.elev != null ? Math.round(r.elev) + ' m' : 'elev n/a'} · ±${Math.round(r.acc)} m`));
+    const row = el('div', 'row');
+    row.append(el('span', 'pill' + (r.sent ? ' sent' : ''), r.sent ? 'WhatsApp opened' : 'Not sent yet'));
+    row.append(el('span', 'm', new Date(r.time).toLocaleString('en-MY')));
+    card.append(row);
+    const act = el('div', 'row');
+    if (confirmId === r.id) {
+      const c = el('div', 'confirm');
+      c.append(el('span', null, 'Delete this reading?'));
+      const yes = el('button', 'btn-ghost danger', 'Delete'); yes.type = 'button';
+      yes.onclick = () => { save(load().filter(x => x.id !== r.id)); confirmId = null; render(); };
+      const no = el('button', 'btn-ghost', 'Keep'); no.type = 'button';
+      no.onclick = () => { confirmId = null; render(); };
+      c.append(yes, no); act.append(c);
+    } else {
+      const send = el('button', 'btn-ghost', r.sent ? 'Send again 再发送' : 'Send 发送'); send.type = 'button';
+      send.onclick = () => sendWhatsApp(r);
+      const del = el('button', 'btn-ghost', 'Delete 删除'); del.type = 'button';
+      del.onclick = () => { confirmId = r.id; render(); };
+      act.append(send, del);
+    }
+    card.append(act);
+    box.append(card);
+  }
+}
+render();
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
