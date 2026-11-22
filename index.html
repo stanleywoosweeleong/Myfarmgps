@@ -86,7 +86,7 @@ h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
 .map { position: relative; height: 260px; border-radius: 10px; overflow: hidden; background: var(--line); margin: 0 0 14px; }
 #mapView { position: absolute; inset: 0; }
 .pin-icon span { position: absolute; left: 10px; top: 10px; width: 24px; height: 24px; border-radius: 50%; background: #e5483b; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
-.map .undo { position: absolute; left: 10px; bottom: 10px; z-index: 1000; font-weight: 600; font-size: .85rem; border: 0; border-radius: 8px; padding: 8px 12px; background: #fff; color: #1f2a22; box-shadow: 0 1px 4px rgba(0,0,0,.35); cursor: pointer; }
+.map .undo { position: absolute; right: 10px; top: 10px; z-index: 1000; font-weight: 600; font-size: .85rem; border: 0; border-radius: 8px; padding: 8px 12px; background: #fff; color: #1f2a22; box-shadow: 0 1px 4px rgba(0,0,0,.35); cursor: pointer; }
 .v .src { font: 500 .75rem var(--font-body); color: var(--muted); margin-left: 6px; }
 .status { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 14px; font-size: .92rem; color: var(--muted); }
 .status.on { color: var(--ink); }
@@ -239,7 +239,9 @@ const T = {
     get: 'Get location', again: 'Read again', reading: 'Reading…',
     searching: 'Searching for satellites…', improving: 'Improving accuracy… ±{n} m',
     fixed: 'Location fixed (±{n} m)', weak: 'Position only accurate to ±{n} m. Drag the pin to your orchard, or move to open sky and read again.',
-    adjusted: 'Pin moved by you, {n} m from the GPS reading.', accAdjusted: 'Set by you', undoMove: 'Back to GPS',
+    adjusted: 'Pin moved by you, {n} m from the GPS reading. Tap Lock this spot to use it.', accAdjusted: 'Set by you', undoMove: 'Back to GPS',
+    lockPin: 'Lock this spot', unlockPin: 'Move pin', locked: 'Spot locked by you, {n} m from the GPS reading.',
+    errLock: 'Tap Lock this spot first, or Back to GPS.',
     denied: 'Location permission is off. Allow location for this app in your phone settings.',
     timeout: 'GPS timed out. Move to open sky and try again.',
     unavail: 'Could not read GPS. Turn on Location and try again.',
@@ -264,7 +266,9 @@ const T = {
     get: '获取位置', again: '重新定位', reading: '定位中…',
     searching: '正在搜索卫星…', improving: '正在提高精度… ±{n} 米',
     fixed: '定位完成（±{n} 米）', weak: '位置精度只有 ±{n} 米。请把红点拖到您的果园，或到空旷处重新定位。',
-    adjusted: '红点已由您移动，距离 GPS 读数 {n} 米。', accAdjusted: '手动设定', undoMove: '回到 GPS 位置',
+    adjusted: '红点已由您移动，距离 GPS 读数 {n} 米。请按“锁定此位置”确认。', accAdjusted: '手动设定', undoMove: '回到 GPS 位置',
+    lockPin: '锁定此位置', unlockPin: '移动红点', locked: '位置已由您锁定，距离 GPS 读数 {n} 米。',
+    errLock: '请先按“锁定此位置”，或回到 GPS 位置。',
     denied: '定位权限未开启。请在手机设置中允许此应用使用位置。',
     timeout: '定位超时。请到空旷处再试。',
     unavail: '无法读取GPS。请开启定位后再试。',
@@ -289,7 +293,9 @@ const T = {
     get: 'Dapatkan lokasi', again: 'Baca semula', reading: 'Sedang membaca…',
     searching: 'Mencari satelit…', improving: 'Meningkatkan ketepatan… ±{n} m',
     fixed: 'Lokasi diperoleh (±{n} m)', weak: 'Kedudukan hanya tepat ±{n} m. Seret pin ke dusun anda, atau pergi ke kawasan lapang dan baca semula.',
-    adjusted: 'Pin dialih oleh anda, {n} m dari bacaan GPS.', accAdjusted: 'Ditetapkan oleh anda', undoMove: 'Kembali ke GPS',
+    adjusted: 'Pin dialih oleh anda, {n} m dari bacaan GPS. Tekan Kunci lokasi ini untuk menggunakannya.', accAdjusted: 'Ditetapkan oleh anda', undoMove: 'Kembali ke GPS',
+    lockPin: 'Kunci lokasi ini', unlockPin: 'Alih pin', locked: 'Lokasi dikunci oleh anda, {n} m dari bacaan GPS.',
+    errLock: 'Tekan Kunci lokasi ini dahulu, atau Kembali ke GPS.',
     denied: 'Kebenaran lokasi tidak dihidupkan. Benarkan lokasi untuk aplikasi ini dalam tetapan telefon.',
     timeout: 'GPS tamat masa. Pergi ke kawasan lapang dan cuba lagi.',
     unavail: 'Tidak dapat membaca GPS. Hidupkan Lokasi dan cuba lagi.',
@@ -316,7 +322,7 @@ let best = null;          // best fix so far: {lat,lng,acc,alt,time}
 let watchId = null, watchTimer = null, stallTimer = null;
 let elevation = null;     // elevation for the position being sent: {m, src: 'GPS'|'map', acc?}
 let gpsElevation = null;  // elevation for the raw GPS fix (restored by Back to GPS)
-let pin = null;           // {lat, lng, dist} when the farmer moved the pin; null = raw GPS fix
+let pin = null;           // {lat, lng, dist, locked} when the farmer moved the pin; null = raw GPS fix
 const pos = () => pin || best;
 let gpsState = 'idle';    // idle | reading | done
 let status = { key: 'idle', n: null, cls: '', live: false };
@@ -359,7 +365,7 @@ function renderStatus() {
 function renderGps() {
   const btn = $('gpsBtn');
   btn.disabled = gpsState === 'reading';
-  btn.textContent = t(gpsState === 'reading' ? 'reading' : gpsState === 'done' ? 'again' : 'get');
+  btn.textContent = t(gpsState === 'reading' ? 'reading' : pinUnlocked() ? 'lockPin' : gpsState === 'done' ? 'again' : 'get');
   if (!best) return;
   const set = (id, text) => { $(id).textContent = text; $(id).classList.remove('dim'); };
   const p = pos();
@@ -471,25 +477,49 @@ async function showMap() {
   } else map.invalidateSize();
   ring.setLatLng([best.lat, best.lng]).setRadius(best.acc);
   marker.setLatLng([pos().lat, pos().lng]);
+  pinUi();
   map.setView([best.lat, best.lng], zoomFor(best.acc));
 }
+/* Moving the pin: drag it or tap the map. A moved pin must be locked (big button)
+   before it can be sent. Once locked it cannot move until the farmer taps Move pin. */
+const pinUnlocked = () => gpsState === 'done' && !!pin && !pin.locked;
+function pinUi() {
+  const u = $('undoPin');
+  u.hidden = !pin;
+  u.dataset.t = pin && pin.locked ? 'unlockPin' : 'undoMove';
+  u.textContent = t(u.dataset.t);
+  if (marker && marker.dragging) { if (pin && pin.locked) marker.dragging.disable(); else marker.dragging.enable(); }
+  renderGps();
+}
 function movePin(ll) {
-  if (!best || gpsState !== 'done') { if (marker && best) marker.setLatLng([pos().lat, pos().lng]); return; }
+  if (!best || gpsState !== 'done' || (pin && pin.locked)) { if (marker && best) marker.setLatLng([pos().lat, pos().lng]); return; }
   marker.setLatLng(ll);
-  pin = { lat: ll.lat, lng: ll.lng, dist: map.distance(ll, [best.lat, best.lng]) };
-  $('undoPin').hidden = false;
+  pin = { lat: ll.lat, lng: ll.lng, dist: map.distance(ll, [best.lat, best.lng]), locked: false };
   setStatus('adjusted', Math.round(pin.dist), 'warn');
-  if ($('formErr').dataset.key === 'errElevWait') showError(null);
+  const err = $('formErr').dataset.key; if (err === 'errElevWait' || err === 'errLock') showError(null);
+  pinUi();
   loadPinElevation();
+}
+function lockPin() {
+  if (!pinUnlocked()) return;
+  pin.locked = true;
+  setStatus('locked', Math.round(pin.dist), 'good');
+  if ($('formErr').dataset.key === 'errLock') showError(null);
+  pinUi();
+}
+function unlockPin() {
+  if (!pin) return;
+  pin.locked = false;
+  setStatus('adjusted', Math.round(pin.dist), 'warn');
+  pinUi();
 }
 function backToGps() {
   if (!best) return;
   pin = null; pinSeq++; pinElevBusy = false; elevation = gpsElevation;
   if (marker) marker.setLatLng([best.lat, best.lng]);
-  $('undoPin').hidden = true;
-  renderGps(); gpsStatus();
+  pinUi(); gpsStatus();
 }
-$('undoPin').addEventListener('click', backToGps);
+$('undoPin').addEventListener('click', () => { if (pin && pin.locked) unlockPin(); else backToGps(); });
 function gpsStatus() {
   const n = Math.round(best.acc);
   if (best.acc <= 25) setStatus('fixed', n, 'good'); else setStatus('weak', n, 'warn');
@@ -517,7 +547,8 @@ function startGps() {
   best = null; pin = null; elevation = gpsElevation = null; gpsState = 'reading';
   runSeq++; pinSeq++; mapSeq++; gpsElevBusy = pinElevBusy = false;
   $('map').hidden = true; $('undoPin').hidden = true;
-  if ($('formErr').dataset.key === 'errElevWait') showError(null);
+  if (marker && marker.dragging) marker.dragging.enable();
+  const fe = $('formErr').dataset.key; if (fe === 'errElevWait' || fe === 'errLock') showError(null);
   ['lat', 'lng', 'elev', 'acc'].forEach(id => { $(id).textContent = '—'; $(id).classList.add('dim'); });
   renderGps();
   setStatus('searching', null, 'warn', true);
@@ -542,7 +573,7 @@ function startGps() {
   // Backstop: if the browser never answers at all (no fix, no error), give up after 2 minutes.
   watchTimer = setTimeout(finishFix, 120000);
 }
-$('gpsBtn').addEventListener('click', startGps);
+$('gpsBtn').addEventListener('click', () => { if (pinUnlocked()) lockPin(); else startGps(); });
 
 /* ---------- WhatsApp message (always English labels, for the recipient) ---------- */
 function message(r) {
@@ -579,6 +610,7 @@ $('form').addEventListener('submit', e => {
   if (!best || gpsState !== 'done') { showError('errNoGps'); $('gpsBtn').focus(); return; }
   if (!farmer && !zh && !en) { showError('errNoField'); $('farmer').focus(); return; }
   if (!navigator.onLine) { showError('errOffline'); return; }
+  if (pinUnlocked()) { showError('errLock'); $('gpsBtn').focus(); return; }
   if (elevBusy()) { showError('errElevWait'); return; }
   showError(null);
   const p = pos();
@@ -670,7 +702,8 @@ function restoreDraft() {
   elevation = pin ? (d.elevation || null) : gpsElevation;
   gpsState = 'done';
   renderGps();
-  if (pin) { $('undoPin').hidden = false; setStatus('adjusted', Math.round(pin.dist), 'warn'); } else gpsStatus();
+  if (pin) setStatus(pin.locked ? 'locked' : 'adjusted', Math.round(pin.dist), pin.locked ? 'good' : 'warn'); else gpsStatus();
+  pinUi();
   retryElevation();
   showMap();
 }
