@@ -10,6 +10,7 @@ A phone web app that records an orchard's GPS position and sends it by WhatsApp.
 - Light and dark mode: follows the phone, with a header button to choose (remembered)
 - First launch asks for the language (中文 / English / Bahasa Melayu); the choice is remembered and can be changed with the EN | 中文 | BM switch
 - Opens instantly from the copy saved on the phone, works offline; sending needs internet (the app asks the farmer to connect and tap again)
+- Unsent details (reading, moved pin, typed names) are saved on the phone as they change and restored after a reload, with a notice and a Discard button; cleared once WhatsApp opens, and after 7 days
 - Updates itself: when a newer version is published, a "new version is ready" bar offers Refresh (the current reading and typed names are kept)
 
 Live app: https://stanleywoosweeleong.github.io/Myfarmgps/
