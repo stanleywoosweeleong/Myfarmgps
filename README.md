@@ -5,6 +5,7 @@ A phone web app that records an orchard's GPS position and sends it by WhatsApp.
 - Reads latitude, longitude, accuracy and elevation (GPS altitude, or a map estimate from Open-Meteo when the phone gives none)
 - Farmer's name, Chinese location name, English/Malay location name: at least one is required
 - Opens WhatsApp to +60 19-382 4740 with the reading filled in (the farmer taps Send)
+- Shows a small satellite preview with the pin and accuracy circle (online only) so the farmer can check the spot
 - Saves every reading on the phone so it can be resent later; works offline once loaded
 
 Live app: https://stanleywoosweeleong.github.io/myfarmgps/
