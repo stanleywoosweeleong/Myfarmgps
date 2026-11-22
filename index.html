@@ -83,8 +83,6 @@ button { font: inherit; }
 .btn-primary { background: var(--leaf); color: var(--leaf-ink); }
 .btn-wa { background: var(--wa); color: #fff; font-size: 1.05rem; margin-top: 4px; }
 .btn:disabled { opacity: .55; cursor: default; }
-.to { text-align: center; font-size: .85rem; color: var(--muted); margin: 0; }
-.to b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .list { display: grid; gap: 10px; }
 .rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
@@ -138,8 +136,7 @@ button { font: inherit; }
         <input type="text" id="en">
       </div>
       <p class="error" id="formErr" hidden></p>
-      <button class="btn btn-wa" type="submit" data-t="send">Send via WhatsApp</button>
-      <p class="to"><span data-t="sendsTo">Sends to</span> <b>Stanley Woo 019-382 4740</b></p>
+      <button class="btn btn-wa" type="submit" data-t="send">Send to Stanley Woo via WhatsApp</button>
     </form>
   </section>
 
@@ -170,7 +167,7 @@ const T = {
     nogps: 'This phone cannot read GPS.',
     detailsTitle: 'Farm details', farmer: "Farmer's name",
     zhName: 'Location name (中文)', enName: 'Location name (English / Malay)',
-    send: 'Send via WhatsApp', sendsTo: 'Sends to',
+    send: 'Send to Stanley Woo via WhatsApp',
     errNoGps: 'Get the location first.', errNoField: 'Fill in at least one field.',
     offline: 'Saved. You are offline, so send it from Saved readings later.',
     savedTitle: 'Saved readings', empty: 'Readings you send are kept here, so you can send them again.',
@@ -190,7 +187,7 @@ const T = {
     nogps: '此手机无法读取GPS。',
     detailsTitle: '农场资料', farmer: '园主姓名',
     zhName: '地名（中文）', enName: '地名（英文／马来文）',
-    send: '通过 WhatsApp 发送', sendsTo: '发送至',
+    send: '通过 WhatsApp 发送给 Stanley Woo',
     errNoGps: '请先获取位置。', errNoField: '请至少填写一项。',
     offline: '已保存。目前没有网络，请稍后在“已保存记录”中发送。',
     savedTitle: '已保存记录', empty: '发送过的记录会保存在这里，方便再次发送。',
@@ -210,7 +207,7 @@ const T = {
     nogps: 'Telefon ini tidak dapat membaca GPS.',
     detailsTitle: 'Butiran ladang', farmer: 'Nama petani',
     zhName: 'Nama tempat (中文)', enName: 'Nama tempat (Inggeris / Melayu)',
-    send: 'Hantar melalui WhatsApp', sendsTo: 'Dihantar ke',
+    send: 'Hantar WhatsApp kepada Stanley Woo',
     errNoGps: 'Dapatkan lokasi dahulu.', errNoField: 'Isi sekurang-kurangnya satu ruangan.',
     offline: 'Disimpan. Tiada internet sekarang, jadi hantar dari Rekod disimpan nanti.',
     savedTitle: 'Rekod disimpan', empty: 'Rekod yang dihantar disimpan di sini supaya boleh dihantar semula.',
