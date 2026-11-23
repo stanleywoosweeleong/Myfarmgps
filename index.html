@@ -127,6 +127,16 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
 .btn-primary { background: var(--leaf); color: var(--leaf-ink); }
 .btn-wa { background: var(--wa); color: var(--wa-ink); font-size: 1.05rem; margin-top: 4px; }
 .btn:disabled { opacity: .55; cursor: default; }
+.preview { position: fixed; inset: 0; z-index: 1800; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; }
+.preview[hidden] { display: none; }
+.previewing body { overflow: hidden; }
+.sheet { width: 100%; max-width: 560px; max-height: 92dvh; display: flex; flex-direction: column; gap: 12px; background: var(--surface); color: var(--ink); border-radius: 18px 18px 0 0;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); box-shadow: 0 -4px 24px rgba(0,0,0,.25); }
+.sheet h2 { margin: 0; }
+.sheet textarea { flex: 1; min-height: 14rem; width: 100%; resize: none; font: .95rem/1.5 var(--font-body); padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.sheet textarea:focus { outline: 2px solid var(--leaf); outline-offset: 1px; }
+.pvbtns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.pvbtns .btn { margin: 0; }
 .ver { margin: 4px 0 0; text-align: center; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* First-launch language picker: full screen until a language is chosen. */
@@ -210,7 +220,7 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
         <p class="error ferr" id="locErr" hidden></p>
       </div>
       <p class="error" id="formErr" hidden></p>
-      <button class="btn btn-wa" type="submit" data-t="send">WhatsApp to Stanley Woo</button>
+      <button class="btn btn-wa" type="submit" id="sendBtn" data-t="send">WhatsApp to Stanley Woo</button>
     </form>
   </section>
 
@@ -236,6 +246,18 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
   <button type="button" data-lang="zh" lang="zh-Hans">中文</button>
   <button type="button" data-lang="en" lang="en">English</button>
   <button type="button" data-lang="ms" lang="ms">Bahasa Melayu</button>
+</div>
+
+<div class="preview" id="preview" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+    <h2 id="pvTitle" data-t="pvTitle">Check your message to Stanley Woo</h2>
+    <textarea id="pvText" rows="12" spellcheck="false" aria-labelledby="pvTitle"></textarea>
+    <p class="error" id="pvErr" hidden></p>
+    <div class="pvbtns">
+      <button type="button" class="btn btn-line" id="pvBack" data-t="pvBack">Back</button>
+      <button type="button" class="btn btn-wa" id="pvOpen" data-t="pvOpen">Open WhatsApp</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden>
@@ -275,6 +297,11 @@ const T = {
     errOffline: 'No internet. Connect and tap the button again.',
     toDark: 'Switch to dark mode', toLight: 'Switch to light mode',
     restored: 'Restored your unsent details from {n}.', discard: 'Discard',
+    msgTitle: '*Orchard GPS reading*', msgFarmer: 'Farmer: ', msgZh: 'Location (中文): ', msgEn: 'Location (EN/BM): ',
+    msgLat: 'Latitude: ', msgLng: 'Longitude: ', msgElev: 'Elevation: ', msgElevGps: ' ({n})', msgElevMap: ' (map estimate)', msgNA: 'not available',
+    msgAcc: 'Position accuracy: ', msgAdjusted: 'Position: adjusted by farmer on map, {n} from GPS reading', msgGps: 'GPS reading: ',
+    msgTime: 'Time: ', msgMap: 'Map: ',
+    pvTitle: 'Check your message to Stanley Woo', pvOpen: 'Open WhatsApp', pvBack: 'Back',
     updReady: 'A new version is ready', updRefresh: 'Refresh', close: 'Close', version: 'Version',
     errElevWait: 'Still getting the elevation. Tap again in a few seconds.',
     langLabel: 'Language', linkLabel: 'App link', qrAlt: 'QR code to open this app',
@@ -303,6 +330,11 @@ const T = {
     errOffline: '没有网络。请连接网络后再按一次。',
     toDark: '切换到深色模式', toLight: '切换到浅色模式',
     restored: '已恢复您 {n} 未发送的资料。', discard: '放弃',
+    msgTitle: '*果园坐标记录*', msgFarmer: '园主：', msgZh: '地名（中文）：', msgEn: '地名（英文/马来文）：',
+    msgLat: '纬度：', msgLng: '经度：', msgElev: '海拔：', msgElevGps: '（{n}）', msgElevMap: '（地图估算）', msgNA: '无',
+    msgAcc: '位置精度：', msgAdjusted: '位置：由园主在地图上调整，距离 GPS 读数 {n}', msgGps: 'GPS 读数：',
+    msgTime: '时间：', msgMap: '地图：',
+    pvTitle: '检查发给 Stanley Woo 的消息', pvOpen: '打开 WhatsApp', pvBack: '返回',
     updReady: '新版本已就绪', updRefresh: '刷新', close: '关闭', version: '版本',
     errElevWait: '正在获取海拔，请几秒后再按一次。',
     langLabel: '语言', linkLabel: '应用链接', qrAlt: '打开此应用的二维码',
@@ -331,6 +363,11 @@ const T = {
     errOffline: 'Tiada internet. Sambung dan tekan butang sekali lagi.',
     toDark: 'Tukar ke mod gelap', toLight: 'Tukar ke mod cerah',
     restored: 'Butiran yang belum dihantar dari {n} telah dipulihkan.', discard: 'Buang',
+    msgTitle: '*Bacaan GPS Dusun*', msgFarmer: 'Petani: ', msgZh: 'Lokasi (中文): ', msgEn: 'Lokasi (EN/BM): ',
+    msgLat: 'Latitud: ', msgLng: 'Longitud: ', msgElev: 'Ketinggian: ', msgElevGps: ' ({n})', msgElevMap: ' (anggaran peta)', msgNA: 'tiada',
+    msgAcc: 'Ketepatan kedudukan: ', msgAdjusted: 'Kedudukan: dilaraskan oleh petani pada peta, {n} dari bacaan GPS', msgGps: 'Bacaan GPS: ',
+    msgTime: 'Masa: ', msgMap: 'Peta: ',
+    pvTitle: 'Semak mesej kepada Stanley Woo', pvOpen: 'Buka WhatsApp', pvBack: 'Kembali',
     updReady: 'Versi baharu sedia', updRefresh: 'Muat semula', close: 'Tutup', version: 'Versi',
     errElevWait: 'Masih mendapatkan ketinggian. Tekan sekali lagi dalam beberapa saat.',
     langLabel: 'Bahasa', linkLabel: 'Pautan aplikasi', qrAlt: 'Kod QR untuk membuka aplikasi ini',
@@ -374,7 +411,7 @@ function setLang(l, save = true) {
   document.querySelectorAll('[data-t-alt]').forEach(n => { n.alt = t(n.dataset.tAlt); });
   const cb = $('copyLink'); if (cb.dataset.state) cb.textContent = t(cb.dataset.state);
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
-  ['formErr', 'farmerErr', 'locErr'].forEach(id => { const e = $(id); if (!e.hidden && e.dataset.key) e.textContent = t(e.dataset.key); });
+  ['formErr', 'farmerErr', 'locErr', 'pvErr'].forEach(id => { const e = $(id); if (!e.hidden && e.dataset.key) e.textContent = t(e.dataset.key); });
   renderGps(); renderStatus(); renderTheme(); renderRestored();
   $('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(t('shareMsg') + '\n' + APP_URL);
 }
@@ -605,32 +642,59 @@ function startGps() {
 }
 $('gpsBtn').addEventListener('click', () => { sentClean = false; if (pinUnlocked()) lockPin(); else startGps(); });
 
-/* ---------- WhatsApp message (always English labels, for the recipient) ---------- */
+/* ---------- WhatsApp message, in the language the farmer chose ---------- */
+const LOCALE = { en: 'en-MY', zh: 'zh-CN', ms: 'ms-MY' };
 function message(r) {
-  const lines = ['*Orchard GPS reading*'];
-  if (r.farmer) lines.push('Farmer: ' + r.farmer);
-  if (r.zh) lines.push('Location (中文): ' + r.zh);
-  if (r.en) lines.push('Location (EN/BM): ' + r.en);
-  lines.push('Latitude: ' + r.lat.toFixed(6));
-  lines.push('Longitude: ' + r.lng.toFixed(6));
-  lines.push('Elevation: ' + (r.elev == null ? 'not available'
-    : Math.round(r.elev) + ' m (' + (r.elevSrc === 'GPS' ? 'GPS' + (r.elevAcc != null ? ' ±' + Math.round(r.elevAcc) + ' m' : '') : 'map estimate') + ')'));
+  const m = n => Math.round(n) + ' ' + t('m');            // "8 m" / "8 米"
+  const lines = [t('msgTitle')];
+  if (r.farmer) lines.push(t('msgFarmer') + r.farmer);
+  if (r.zh) lines.push(t('msgZh') + r.zh);
+  if (r.en) lines.push(t('msgEn') + r.en);
+  lines.push(t('msgLat') + r.lat.toFixed(6));
+  lines.push(t('msgLng') + r.lng.toFixed(6));
+  lines.push(t('msgElev') + (r.elev == null ? t('msgNA')
+    : m(r.elev) + (r.elevSrc === 'GPS' ? t('msgElevGps', 'GPS' + (r.elevAcc != null ? ' ±' + m(r.elevAcc) : '')) : t('msgElevMap'))));
   if (r.adjusted) {
-    lines.push('Position: adjusted by farmer on map, ' + r.moved + ' m from GPS reading');
-    lines.push('GPS reading: ' + r.gpsLat.toFixed(6) + ', ' + r.gpsLng.toFixed(6) + ' (±' + Math.round(r.acc) + ' m)');
-  } else lines.push('Position accuracy: ±' + Math.round(r.acc) + ' m');
-  lines.push('Time: ' + new Date(r.time).toLocaleString('en-MY'));
-  lines.push('Map: https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
+    lines.push(t('msgAdjusted', m(r.moved)));
+    lines.push(t('msgGps') + r.gpsLat.toFixed(6) + ', ' + r.gpsLng.toFixed(6) + ' (±' + m(r.acc) + ')');
+  } else lines.push(t('msgAcc') + '±' + m(r.acc));
+  lines.push(t('msgTime') + new Date(r.time).toLocaleString(LOCALE[lang]));
+  lines.push(t('msgMap') + 'https://maps.google.com/?q=' + r.lat.toFixed(6) + ',' + r.lng.toFixed(6));
   return lines.join('\n');
 }
 // Opens WhatsApp straight from the tap (nothing awaited first), so the phone never blocks it.
-// The message uses exactly what is on screen.
-function sendWhatsApp(r) {
-  const url = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(message(r));
+function sendWhatsApp(text) {
+  const url = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text);
   const w = window.open(url, '_blank');
-  if (w) { try { w.opener = null; } catch {} sentClean = true; clearDraft(); }
+  if (w) { try { w.opener = null; } catch {} sentClean = true; clearDraft(); closePreview(); }
   else location.href = url;                  // draft stays saved, so nothing is lost if the page is left
 }
+
+/* ---------- preview: the farmer sees, and can edit, exactly what will be sent ---------- */
+function openPreview(text) {
+  $('pvText').value = text;
+  $('pvOpen').disabled = !text.trim();
+  showError(null, 'pvErr');
+  $('preview').hidden = false;
+  document.documentElement.classList.add('previewing');
+  document.querySelector('main').inert = true;
+  $('pvText').focus(); $('pvText').setSelectionRange(0, 0); $('pvText').scrollTop = 0;
+}
+function closePreview() {
+  if ($('preview').hidden) return;
+  $('preview').hidden = true;
+  document.documentElement.classList.remove('previewing');
+  document.querySelector('main').inert = false;
+  $('sendBtn').focus();
+}
+$('pvBack').addEventListener('click', closePreview);
+$('preview').addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
+$('preview').addEventListener('click', e => { if (e.target.id === 'preview') closePreview(); });   // tap outside the sheet
+$('pvText').addEventListener('input', () => { $('pvOpen').disabled = !$('pvText').value.trim(); });
+$('pvOpen').addEventListener('click', () => {
+  if (!navigator.onLine) { showError('errOffline', 'pvErr'); return; }
+  sendWhatsApp($('pvText').value.trim());
+});
 
 /* ---------- form ---------- */
 function showError(key, id = 'formErr') { const e = $(id); e.dataset.key = key || ''; e.textContent = key ? t(key) : ''; e.hidden = !key; }
@@ -652,22 +716,22 @@ $('form').addEventListener('submit', e => {
   if (!gpsOk) { $('gpsBtn').focus(); return; }
   if (!farmerOk) { $('farmer').focus(); return; }
   if (!locOk) { $('zh').focus(); return; }
-  if (!navigator.onLine) { showError('errOffline'); return; }
   if (pinUnlocked()) { showError('errLock'); $('gpsBtn').focus(); return; }
   if (elevBusy()) { showError('errElevWait'); return; }
   showError(null);
   const p = pos();
-  sendWhatsApp({
+  openPreview(message({
     time: best.time || Date.now(),
     lat: p.lat, lng: p.lng, acc: best.acc,
     adjusted: !!pin, moved: pin ? Math.round(pin.dist) : 0, gpsLat: best.lat, gpsLng: best.lng,
     elev: elevation ? elevation.m : null, elevSrc: elevation ? elevation.src : null, elevAcc: elevation ? elevation.acc : null,
     farmer, zh, en
-  });
+  }));
 });
 ['farmer', 'zh', 'en'].forEach(id => $(id).addEventListener('input', () => { sentClean = false; checkFields(false); saveDraft(); }));
 window.addEventListener('online', () => {
   if ($('formErr').dataset.key === 'errOffline') showError(null);
+  if ($('pvErr').dataset.key === 'errOffline') showError(null, 'pvErr');
   retryElevation();
   if (gpsState === 'done' && $('map').hidden) showMap();
 });
