@@ -86,6 +86,9 @@ h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
 .v.dim { color: var(--muted); font-weight: 400; }
 .map { position: relative; height: 260px; border-radius: 10px; overflow: hidden; background: var(--line); margin: 0 0 14px; }
 #mapView { position: absolute; inset: 0; }
+/* Removes the hairline seams between satellite tiles that high-resolution phone screens show
+   (a known Leaflet + Chrome/Safari rendering issue). */
+.leaflet-container img.leaflet-tile { outline: 1px solid transparent; }
 /* Scroll rails: a strip down each side of the map, below its buttons. A vertical swipe that starts
    here scrolls the page instead of panning the map; a tap jumps to Farm details. */
 .scrolltouch { position: absolute; top: 84px; bottom: 0; width: 42px; z-index: 650; cursor: pointer; touch-action: pan-y; }
