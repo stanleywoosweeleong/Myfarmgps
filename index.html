@@ -76,8 +76,6 @@ h1 { font-size: 1.25rem; margin: 0; flex: 1; min-width: 0; }
 @media (max-width: 430px) { header img { display: none; } }
 @media (max-width: 360px) { h1 { font-size: 1.1rem; } .lang button { padding: 8px 9px; } }
 
-section.compact { padding-block: 14px; }
-section.compact h2 { margin-bottom: 10px; }
 section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; }
 h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
 
@@ -139,7 +137,12 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
 .sheet textarea:focus { outline: 2px solid var(--leaf); outline-offset: 1px; }
 .pvbtns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 .pvbtns .btn { margin: 0; }
-.ver { margin: 4px 0 0; text-align: center; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.foot { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 2px; }
+.ver { margin: 0; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.iconbtn { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.iconbtn svg { width: 20px; height: 20px; }
+.iconbtn:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
+.sheet .share { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* First-launch language picker: full screen until a language is chosen. */
 #langpick { display: none; position: fixed; inset: 0; z-index: 2000; background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 14px;
@@ -162,8 +165,7 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
 #toastgo { background: var(--leaf); color: var(--leaf-ink); padding: 8px 16px; }
 #toastx { background: transparent; color: var(--bg); width: 40px; font-size: 1.1rem; }
 
-.share { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.share .btn { height: 50px; min-height: 0; padding: 0 6px; font-size: .9rem; line-height: 1.2; text-align: center; }
+.share .btn { height: 50px; min-height: 0; margin: 0; padding: 0 6px; font-size: .9rem; line-height: 1.2; text-align: center; }
 .share a.btn { display: grid; place-items: center; text-decoration: none; }
 .qrbox { align-self: center; width: min(240px, 70vw); aspect-ratio: 1; padding: 10px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
 .qrbox img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
@@ -226,17 +228,14 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
     </form>
   </section>
 
-  <section class="compact" aria-labelledby="share-h">
-    <h2 id="share-h" data-t="shareTitle">Share this app</h2>
-    <div class="share">
-      <button class="btn btn-line" type="button" id="showQr" data-t="shareQr">QR code</button>
-      <a class="btn btn-wa" id="shareWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
-      <button class="btn btn-line" type="button" id="copyLink" data-t="copyLink">Copy link</button>
-    </div>
-    <span class="sr" id="copyStatus" role="status" aria-live="polite"></span>
-  </section>
 
-  <p class="ver"><span data-t="version">Version</span> <span id="ver"></span></p>
+  <div class="foot">
+    <p class="ver"><span data-t="version">Version</span> <span id="ver"></span></p>
+    <button type="button" class="iconbtn" id="shareBtn" aria-label="Share this app" data-t-label="shareTitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></svg>
+    </button>
+    <span class="sr" id="copyStatus" role="status" aria-live="polite"></span>
+  </div>
 </main>
 
 <div id="langpick" role="dialog" aria-modal="true" tabindex="-1" aria-label="中文 · English · Bahasa Melayu">
@@ -261,9 +260,13 @@ button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
 
 <div class="preview" id="qrSheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
-    <h2 id="qrTitle" data-t="qrTitle">Scan to open Orchard GPS</h2>
+    <h2 id="qrTitle" data-t="shareTitle">Share this app</h2>
     <div class="qrbox"><img src="qr.svg" alt="QR code to open this app" data-t-alt="qrAlt"></div>
     <input type="text" id="appLink" readonly aria-label="App link" data-t-label="linkLabel" value="https://stanleywoosweeleong.github.io/Myfarmgps/">
+    <div class="share">
+      <a class="btn btn-wa" id="shareWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="btn btn-line" type="button" id="copyLink" data-t="copyLink">Copy link</button>
+    </div>
     <button type="button" class="btn btn-line" id="qrClose" data-t="close">Close</button>
   </div>
 </div>
@@ -314,7 +317,7 @@ const T = {
     errElevWait: 'Still getting the elevation. Tap again in a few seconds.',
     langLabel: 'Language', linkLabel: 'App link', qrAlt: 'QR code to open this app',
     copyFail: 'Copy failed. The link is selected; copy it from your keyboard menu.', copyFailBtn: 'Could not copy',
-    shareTitle: 'Share this app', shareQr: 'QR code', qrTitle: 'Scan to open Orchard GPS', copyLink: 'Copy link', copied: 'Link copied',
+    shareTitle: 'Share this app', copyLink: 'Copy link', copied: 'Link copied',
     shareMsg: 'Orchard GPS: record your orchard\'s GPS location and send it to Stanley Woo.'
   },
   zh: {
@@ -347,7 +350,7 @@ const T = {
     errElevWait: '正在获取海拔，请几秒后再按一次。',
     langLabel: '语言', linkLabel: '应用链接', qrAlt: '打开此应用的二维码',
     copyFail: '复制失败。链接已选中，请手动复制。', copyFailBtn: '无法复制',
-    shareTitle: '分享此应用', shareQr: '二维码', qrTitle: '扫码打开果园坐标', copyLink: '复制链接', copied: '链接已复制',
+    shareTitle: '分享此应用', copyLink: '复制链接', copied: '链接已复制',
     shareMsg: '果园坐标：记录果园的 GPS 位置并发送给 Stanley Woo。'
   },
   ms: {
@@ -380,7 +383,7 @@ const T = {
     errElevWait: 'Masih mendapatkan ketinggian. Tekan sekali lagi dalam beberapa saat.',
     langLabel: 'Bahasa', linkLabel: 'Pautan aplikasi', qrAlt: 'Kod QR untuk membuka aplikasi ini',
     copyFail: 'Gagal menyalin. Pautan telah dipilih; salin secara manual.', copyFailBtn: 'Gagal menyalin',
-    shareTitle: 'Kongsi aplikasi ini', shareQr: 'Kod QR', qrTitle: 'Imbas untuk membuka Dusun GPS', copyLink: 'Salin pautan', copied: 'Pautan disalin',
+    shareTitle: 'Kongsi aplikasi ini', copyLink: 'Salin pautan', copied: 'Pautan disalin',
     shareMsg: 'Dusun GPS: rekod lokasi GPS dusun anda dan hantar kepada Stanley Woo.'
   }
 };
@@ -744,7 +747,7 @@ window.addEventListener('online', () => {
   if (gpsState === 'done' && $('map').hidden) showMap();
 });
 
-/* ---------- share this app: QR code (in a sheet), WhatsApp, copy link ---------- */
+/* ---------- share this app: the share icon opens a sheet with the QR code, link, WhatsApp and Copy link ---------- */
 function openQr() {
   $('qrSheet').hidden = false;
   document.documentElement.classList.add('previewing');
@@ -756,9 +759,9 @@ function closeQr() {
   $('qrSheet').hidden = true;
   document.documentElement.classList.remove('previewing');
   document.querySelector('main').inert = false;
-  $('showQr').focus();
+  $('shareBtn').focus();
 }
-$('showQr').addEventListener('click', openQr);
+$('shareBtn').addEventListener('click', openQr);
 $('qrClose').addEventListener('click', closeQr);
 $('qrSheet').addEventListener('click', e => { if (e.target.id === 'qrSheet') closeQr(); });
 $('qrSheet').addEventListener('keydown', e => { if (e.key === 'Escape') closeQr(); });
@@ -768,12 +771,12 @@ function selectLink() { const i = $('appLink'); i.focus(); i.select(); i.setSele
 $('copyLink').addEventListener('click', async () => {
   let ok = false;
   try { await navigator.clipboard.writeText(APP_URL); ok = true; }
-  catch { openQr(); selectLink(); try { ok = document.execCommand('copy'); } catch {} }
+  catch { selectLink(); try { ok = document.execCommand('copy'); } catch {} }
   const b = $('copyLink');
   b.dataset.state = ok ? 'copied' : 'copyFailBtn';
   b.textContent = t(b.dataset.state); b.classList.toggle('ok', ok);
   $('copyStatus').textContent = t(ok ? 'copied' : 'copyFail');   // full explanation for screen readers
-  if (!ok) selectLink();                     // the sheet shows the link selected, to copy by hand
+  if (!ok) selectLink();                     // leave the link selected, to copy by hand
   clearTimeout(copyTimer);
   copyTimer = setTimeout(() => { delete b.dataset.state; b.textContent = t('copyLink'); b.classList.remove('ok'); $('copyStatus').textContent = ''; }, 2500);
 });
